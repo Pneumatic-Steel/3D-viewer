@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>3D Model Viewer</title>
-
   <style>
     html, body {
       height: 100%;
@@ -161,7 +160,7 @@
     const loader = new THREE.GLTFLoader();
     const textureLoader = new THREE.TextureLoader();
 
-    const pivot = new THREE.Group();
+    let pivot = new THREE.Group();
     scene.add(pivot);
 
     let modelRoot = null;
@@ -192,9 +191,9 @@
       const frontTex = await textureLoader.loadAsync(`models/thumbnails/${base}.jpg`);
       const backTex  = await textureLoader.loadAsync(`models/thumbnails/cardbacking.png`);
 
-      const frontAspect = frontTex.image.width / frontTex.image.height;
+      const aspect = frontTex.image.width / frontTex.image.height;
       const w = 1;
-      const h = w / frontAspect;
+      const h = w / aspect;
 
       cardGroup = new THREE.Group();
       cardGroup.userData.isCard = true;
@@ -210,16 +209,8 @@
       );
       back.rotation.y = Math.PI;
 
-      // 🔥 PHYSICAL CARD FIX — scale back image to match card
-      const backAspect = backTex.image.width / backTex.image.height;
-      if (backAspect > frontAspect) {
-        back.scale.y = frontAspect / backAspect;
-      } else {
-        back.scale.x = backAspect / frontAspect;
-      }
-
       cardGroup.add(front, back);
-      scene.add(cardGroup);
+      scene.add(cardGroup); // 🔥 FIX: card is NOT parented to pivot
 
       if (showModel) {
         const gltf = await loader.loadAsync(filename);
@@ -296,7 +287,7 @@
     async function init() {
       const res = await fetch('https://api.github.com/repos/pneumatic-steel/3D-viewer/contents/models');
       const data = await res.json();
-      MODEL_FILES = data.filter(f => f.name.endsWith('.glb')).map(f => `models/${f.name}`);
+      MODEL_FILES = data.filter(f=>f.name.endsWith('.glb')).map(f=>`models/${f.name}`);
       loadContent(MODEL_FILES[0]);
     }
 
