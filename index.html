@@ -183,7 +183,6 @@
     // Model loading
     const loader = new THREE.GLTFLoader();
     let modelRoot = null;
-    let isFirstModel = true;
 
     function loadModel(filename) {
       msg.style.display = 'grid';
@@ -212,20 +211,15 @@
           modelRoot.position.z = -center.z;
 
           // Optional: raise model so it sits on the ground (bottom at y=0)
-          // Comment out the next line if you want it fully centered at origin
-          modelRoot.position.y += size.y / 2;
+          // Comment out the next line if you want it fully centered at origin (recommended for no wobble)
+          // modelRoot.position.y += size.y / 2;
 
           const maxDim = Math.max(size.x, size.y, size.z);
 
-          // Only set initial camera for first model
-          if (isFirstModel) {
-            cameraRadius = maxDim * 2.5;
-            camera.position.set(cameraRadius, cameraRadius * 0.75, cameraRadius);
-            targetRotation.y = Math.atan2(camera.position.x, camera.position.z);
-            targetRotation.x = Math.asin(camera.position.y / cameraRadius);
-            rotation = { ...targetRotation };
-            isFirstModel = false;
-          }
+          // Always reset camera for every model load
+          cameraRadius = maxDim * 2.5;
+          targetRotation = { x: 0.3, y: 0.8 };
+          rotation = { x: 0.3, y: 0.8 };
 
           msg.style.display = "none";
           updateModelCounter();
