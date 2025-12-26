@@ -182,41 +182,44 @@
 
     // Model loading
     const loader = new THREE.GLTFLoader();
-    let modelRoot = null;
+    let pivot = null; // Use pivot for rotation instead of modelRoot
 
     function loadModel(filename) {
       msg.style.display = 'grid';
       msg.textContent = 'Loading model…';
 
-      // Remove existing model
-      if (modelRoot) {
-        scene.remove(modelRoot);
-        modelRoot = null;
+      // Remove existing pivot and model
+      if (pivot) {
+        scene.remove(pivot);
+        pivot = null;
       }
 
       loader.load(
         filename,
         (gltf) => {
-          modelRoot = gltf.scene;
-          scene.add(modelRoot);
+          const modelRoot = gltf.scene;
 
-          // === FIXED CENTERING CODE ===
+          // Center the model at origin
           const box = new THREE.Box3().setFromObject(modelRoot);
           const center = box.getCenter(new THREE.Vector3());
           const size = box.getSize(new THREE.Vector3());
 
-          // Shift so geometric center is at (0,0,0)
+          // Shift model so its geometric center is at (0,0,0)
           modelRoot.position.x = -center.x;
           modelRoot.position.y = -center.y;
           modelRoot.position.z = -center.z;
 
-          // Optional: raise model so it sits on the ground (bottom at y=0)
-          // Comment out the next line if you want it fully centered at origin (recommended for no wobble)
+          // Optional: raise so bottom sits on y=0 (uncomment if desired)
           // modelRoot.position.y += size.y / 2;
+
+          // Wrap in a pivot group at (0,0,0) for rotation around center
+          pivot = new THREE.Group();
+          pivot.add(modelRoot);
+          scene.add(pivot);
 
           const maxDim = Math.max(size.x, size.y, size.z);
 
-          // Always reset camera for every model load
+          // Reset camera for every model
           cameraRadius = maxDim * 2.5;
           targetRotation = { x: 0.3, y: 0.8 };
           rotation = { x: 0.3, y: 0.8 };
@@ -275,8 +278,8 @@
     });
 
     btnReset.addEventListener("click", () => {
-      if (modelRoot) {
-        const box = new THREE.Box3().setFromObject(modelRoot);
+      if (pivot) {
+        const box = new THREE.Box3().setFromObject(pivot);
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
         cameraRadius = maxDim * 2.5;
@@ -291,9 +294,9 @@
       requestAnimationFrame(animate);
       updateCamera();
 
-      if (modelRoot && autoRotate && !isDragging) {
+      if (pivot && autoRotate && !isDragging) {
         const dt = clock.getDelta();
-        modelRoot.rotation.y += dt * parseFloat(speed.value);
+        pivot.rotation.y += dt * parseFloat(speed.value);
       }
 
       renderer.render(scene, camera);
