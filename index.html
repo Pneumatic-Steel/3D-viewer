@@ -48,6 +48,11 @@
     .menuTile span { display: none; } /* Hide any spans if present, though we'll remove them from code */
     .menuTile:hover img { filter: brightness(1.1); }
     .menuTile.selected img { box-shadow: 0 0 0 2px #fff; }
+
+    #backgroundCard {
+      position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      max-width: 40vw; max-height: 80vh; object-fit: contain; z-index: 1;
+    }
   </style>
 </head>
 <body>
@@ -73,6 +78,8 @@
 
   <div id="msg">Loading models…</div>
 
+  <img id="backgroundCard" src="" alt="Background Card">
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <script>
@@ -86,6 +93,7 @@
     const menuGrid = document.getElementById("menuGrid");
     const menuButton = document.getElementById("menuButton");
     const menuClose = document.getElementById("menuClose");
+    const backgroundCard = document.getElementById("backgroundCard");
 
     const scene = new THREE.Scene();
 
@@ -252,6 +260,10 @@
         // Load sound
         loadSound(filename);
 
+        // Set background card
+        backgroundCard.src = getThumbnailUrl(filename);
+        backgroundCard.style.display = '';
+
         msg.style.display = "none";
         updateModelCounter();
         highlightSelectedTile();
@@ -311,6 +323,9 @@
           currentSound = null;
         }
 
+        // Hide 2D background card
+        backgroundCard.style.display = 'none';
+
         msg.style.display = "none";
         updateModelCounter();
         highlightSelectedTile();
@@ -348,7 +363,7 @@
     }
 
     function handleClick(event) {
-      if (!showModel) return; // No interaction if model hidden (card not interactive)
+      if (!showModel) return; // No interaction if model hidden (card not clickable for sound)
 
       // Normalize pointer position
       pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
