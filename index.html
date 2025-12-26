@@ -14,14 +14,16 @@
       max-width: calc(100vw - 24px); 
     } 
     #ui h1 { font-size: 14px; margin: 0 0 6px 0; font-weight: 600; } 
-    #ui .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; } 
+    #ui .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; } 
     #ui button { 
       border: 0; border-radius: 8px; padding: 8px 10px; 
       background: #2b2b2b; color: #fff; cursor: pointer; 
     } 
-    #ui button:hover { background: #3a3a3a; } 
+    #ui button:hover { background: #3a3a3a; }
+    #ui button:disabled { background: #1a1a1a; color: #666; cursor: not-allowed; }
     #ui label { font-size: 12px; opacity: 0.9; display: flex; gap: 6px; align-items: center; } 
     #ui input[type="range"] { width: 140px; } 
+    #modelCounter { font-size: 12px; opacity: 0.8; }
     #msg { 
       position: fixed; inset: 0; display: grid; place-items: center; 
       color: #ddd; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; 
@@ -32,6 +34,11 @@
 <body> 
   <div id="ui"> 
     <h1>3D Model Viewer</h1> 
+    <div class="row">
+      <button id="prevModel">← Previous</button>
+      <span id="modelCounter">Model 1 of 1</span>
+      <button id="nextModel">Next →</button>
+    </div>
     <div class="row"> 
       <button id="reset">Reset View</button> 
       <button id="toggleRotate">Auto-rotate: ON</button> 
@@ -44,6 +51,15 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <script> 
+    // Configuration: Add your model filenames here
+    const MODEL_FILES = [
+      'base.glb',
+      'model2.glb',
+      'model3.glb'
+    ];
+    
+    let currentModelIndex = 0;
+    
     const msg = document.getElementById("msg"); 
  
     const scene = new THREE.Scene(); 
@@ -164,54 +180,90 @@
     dir.position.set(3, 6, 4); 
     scene.add(dir); 
  
- 
- 
-    // Load model
+    // Model loading
     const loader = new THREE.GLTFLoader(); 
     let modelRoot = null; 
- 
-    loader.load( 
-      "base.glb", 
-      (gltf) => { 
-        modelRoot = gltf.scene; 
-        scene.add(modelRoot); 
- 
-        // Center + frame model 
-        const box = new THREE.Box3().setFromObject(modelRoot); 
-        const size = box.getSize(new THREE.Vector3()); 
-        const center = box.getCenter(new THREE.Vector3()); 
- 
-        modelRoot.position.x += (modelRoot.position.x - center.x); 
-        modelRoot.position.y += (modelRoot.position.y - center.y); 
-        modelRoot.position.z += (modelRoot.position.z - center.z); 
- 
-        const maxDim = Math.max(size.x, size.y, size.z); 
-        cameraRadius = maxDim * 1.8; 
-        
-        camera.position.set(cameraRadius, cameraRadius * 0.75, cameraRadius); 
-        targetRotation.y = Math.atan2(camera.position.x, camera.position.z);
-        targetRotation.x = Math.asin(camera.position.y / cameraRadius);
-        rotation = { ...targetRotation };
- 
-        msg.style.display = "none"; 
-      }, 
-      (xhr) => { 
-        if (xhr.total) { 
-          const pct = Math.round((xhr.loaded / xhr.total) * 100); 
-          msg.textContent = `Loading model… ${pct}%`; 
+    
+    function loadModel(filename) {
+      msg.style.display = 'grid';
+      msg.textContent = 'Loading model…';
+      
+      // Remove existing model
+      if (modelRoot) {
+        scene.remove(modelRoot);
+        modelRoot = null;
+      }
+      
+      loader.load( 
+        filename, 
+        (gltf) => { 
+          modelRoot = gltf.scene; 
+          scene.add(modelRoot); 
+   
+          // Center + frame model 
+          const box = new THREE.Box3().setFromObject(modelRoot); 
+          const size = box.getSize(new THREE.Vector3()); 
+          const center = box.getCenter(new THREE.Vector3()); 
+   
+          modelRoot.position.x += (modelRoot.position.x - center.x); 
+          modelRoot.position.y += (modelRoot.position.y - center.y); 
+          modelRoot.position.z += (modelRoot.position.z - center.z); 
+   
+          const maxDim = Math.max(size.x, size.y, size.z); 
+          cameraRadius = maxDim * 1.8; 
+          
+          camera.position.set(cameraRadius, cameraRadius * 0.75, cameraRadius); 
+          targetRotation.y = Math.atan2(camera.position.x, camera.position.z);
+          targetRotation.x = Math.asin(camera.position.y / cameraRadius);
+          rotation = { ...targetRotation };
+   
+          msg.style.display = "none";
+          updateModelCounter();
+        }, 
+        (xhr) => { 
+          if (xhr.total) { 
+            const pct = Math.round((xhr.loaded / xhr.total) * 100); 
+            msg.textContent = `Loading model… ${pct}%`; 
+          } 
+        }, 
+        (err) => { 
+          console.error('Load error:', err); 
+          msg.textContent = `Failed to load ${filename}. Check that the file exists.`; 
         } 
-      }, 
-      (err) => { 
-        console.error('Load error:', err); 
-        msg.textContent = "Failed to load model. Check console for details."; 
-      } 
-    ); 
+      );
+    }
+    
+    function updateModelCounter() {
+      document.getElementById('modelCounter').textContent = 
+        `Model ${currentModelIndex + 1} of ${MODEL_FILES.length}`;
+      document.getElementById('prevModel').disabled = currentModelIndex === 0;
+      document.getElementById('nextModel').disabled = currentModelIndex === MODEL_FILES.length - 1;
+    }
+    
+    // Load first model
+    loadModel(MODEL_FILES[currentModelIndex]);
  
     // UI 
     let autoRotate = true; 
     const btnRotate = document.getElementById("toggleRotate"); 
     const btnReset = document.getElementById("reset"); 
-    const speed = document.getElementById("speed"); 
+    const speed = document.getElementById("speed");
+    const btnPrev = document.getElementById("prevModel");
+    const btnNext = document.getElementById("nextModel");
+    
+    btnPrev.addEventListener("click", () => {
+      if (currentModelIndex > 0) {
+        currentModelIndex--;
+        loadModel(MODEL_FILES[currentModelIndex]);
+      }
+    });
+    
+    btnNext.addEventListener("click", () => {
+      if (currentModelIndex < MODEL_FILES.length - 1) {
+        currentModelIndex++;
+        loadModel(MODEL_FILES[currentModelIndex]);
+      }
+    });
  
     btnRotate.addEventListener("click", () => { 
       autoRotate = !autoRotate; 
