@@ -48,11 +48,6 @@
     .menuTile span { display: none; } /* Hide any spans if present, though we'll remove them from code */
     .menuTile:hover img { filter: brightness(1.1); }
     .menuTile.selected img { box-shadow: 0 0 0 2px #fff; }
-
-    #backgroundCard {
-      position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
-      max-width: 40vw; max-height: 80vh; object-fit: contain; z-index: 1;
-    }
   </style>
 </head>
 <body>
@@ -78,8 +73,6 @@
 
   <div id="msg">Loading models…</div>
 
-  <img id="backgroundCard" src="" alt="Background Card">
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <script>
@@ -93,7 +86,6 @@
     const menuGrid = document.getElementById("menuGrid");
     const menuButton = document.getElementById("menuButton");
     const menuClose = document.getElementById("menuClose");
-    const backgroundCard = document.getElementById("backgroundCard");
 
     const scene = new THREE.Scene();
 
@@ -224,64 +216,22 @@
     // Model loading
     const loader = new THREE.GLTFLoader();
     let pivot = null;
+    let modelRoot = null;
+    let cardGroup = null;
 
-    async function loadModel(filename) {
+    async function loadContent(filename) {
       msg.style.display = 'grid';
-      msg.textContent = 'Loading model…';
+      msg.textContent = 'Loading content…';
 
       if (pivot) {
         scene.remove(pivot);
         pivot = null;
       }
 
-      try {
-        const gltf = await loader.loadAsync(filename);
-        const modelRoot = gltf.scene;
+      pivot = new THREE.Group();
+      scene.add(pivot);
 
-        const box = new THREE.Box3().setFromObject(modelRoot);
-        const center = box.getCenter(new THREE.Vector3());
-        const size = box.getSize(new THREE.Vector3());
-
-        modelRoot.position.x = -center.x;
-        modelRoot.position.y = -center.y;
-        modelRoot.position.z = -center.z;
-
-        // Optional: modelRoot.position.y += size.y / 2;
-
-        pivot = new THREE.Group();
-        pivot.add(modelRoot);
-        scene.add(pivot);
-
-        const maxDim = Math.max(size.x, size.y, size.z);
-        cameraRadius = maxDim * 2.5;
-        targetRotation = { x: 0.3, y: 0.8 };
-        rotation = { x: 0.3, y: 0.8 };
-
-        // Load sound
-        loadSound(filename);
-
-        // Set background card
-        backgroundCard.src = getThumbnailUrl(filename);
-        backgroundCard.style.display = '';
-
-        msg.style.display = "none";
-        updateModelCounter();
-        highlightSelectedTile();
-      } catch (err) {
-        console.error('Load error:', err);
-        msg.textContent = `Failed to load ${filename}.`;
-      }
-    }
-
-    async function loadCard(filename) {
-      msg.style.display = 'grid';
-      msg.textContent = 'Loading card…';
-
-      if (pivot) {
-        scene.remove(pivot);
-        pivot = null;
-      }
-
+      // Load card
       const baseName = filename.split('/').pop().replace('.glb', '');
       const frontUrl = getThumbnailUrl(filename);
       const backUrl = 'models/thumbnails/cardbacking.png';
@@ -301,46 +251,88 @@
         const frontMaterial = new THREE.MeshBasicMaterial({ map: frontTexture, side: THREE.FrontSide, transparent: false });
         const frontMesh = new THREE.Mesh(frontGeometry, frontMaterial);
 
-        // Back - same size
+        // Back
         const backGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
         const backMaterial = new THREE.MeshBasicMaterial({ map: backTexture, side: THREE.FrontSide, transparent: true });
         const backMesh = new THREE.Mesh(backGeometry, backMaterial);
         backMesh.rotation.y = Math.PI;
 
-        pivot = new THREE.Group();
-        pivot.add(frontMesh);
-        pivot.add(backMesh);
-        scene.add(pivot);
+        cardGroup = new THREE.Group();
+        cardGroup.userData.isCard = true;
+        cardGroup.add(frontMesh);
+        cardGroup.add(backMesh);
+        pivot.add(cardGroup);
 
-        const maxDim = Math.max(cardWidth, cardHeight);
-        cameraRadius = maxDim * 2.5;
-        targetRotation = { x: 0.3, y: 0.8 };
-        rotation = { x: 0.3, y: 0.8 };
-
-        // No sound for card
-        if (currentSound) {
-          currentSound.pause();
-          currentSound = null;
+        // Adjust back texture to fit without stretching (contain)
+        const planeAspect = cardWidth / cardHeight;
+        const backImageAspect = backTexture.image.width / backTexture.image.height;
+        backTexture.repeat.set(1, 1);
+        backTexture.offset.set(0, 0);
+        if (planeAspect !== backImageAspect) {
+          const ratio = planeAspect / backImageAspect;
+          if (ratio > 1) {
+            // Plane is wider than back image aspect
+            backTexture.repeat.x = 1 / ratio;
+            backTexture.offset.x = (1 - backTexture.repeat.x) / 2;
+          } else {
+            // Plane is taller
+            backTexture.repeat.y = ratio;
+            backTexture.offset.y = (1 - backTexture.repeat.y) / 2;
+          }
         }
 
-        // Hide 2D background card
-        backgroundCard.style.display = 'none';
+        let maxDim;
+
+        if (showModel) {
+          // Load model
+          const gltf = await loader.loadAsync(filename);
+          modelRoot = gltf.scene;
+          modelRoot.userData.isModel = true;
+
+          const box = new THREE.Box3().setFromObject(modelRoot);
+          const center = box.getCenter(new THREE.Vector3());
+          const size = box.getSize(new THREE.Vector3());
+
+          modelRoot.position.x = -center.x;
+          modelRoot.position.y = -center.y;
+          modelRoot.position.z = -center.z;
+
+          pivot.add(modelRoot);
+
+          // Position card behind the model
+          const modelBox = new THREE.Box3().setFromObject(modelRoot);
+          cardGroup.position.z = modelBox.min.z - 0.1;
+
+          // Scale card to be background-like (e.g., 1.5x model height)
+          const modelHeight = size.y;
+          cardGroup.scale.setScalar(modelHeight / cardHeight * 1.5);
+
+          // Compute overall maxDim for camera
+          const overallBox = new THREE.Box3().setFromObject(pivot);
+          const overallSize = overallBox.getSize(new THREE.Vector3());
+          maxDim = Math.max(overallSize.x, overallSize.y, overallSize.z);
+          cameraRadius = maxDim * 1.5; // Adjust to fit both
+
+        } else {
+          // Card only
+          modelRoot = null;
+          cardGroup.position.z = 0;
+          maxDim = Math.max(cardWidth, cardHeight);
+          cameraRadius = maxDim * 2.5;
+        }
+
+        // Load sound always (for model or card interaction)
+        loadSound(filename);
+
+        targetRotation = { x: 0.3, y: 0.8 };
+        rotation = { x: 0.3, y: 0.8 };
 
         msg.style.display = "none";
         updateModelCounter();
         highlightSelectedTile();
       } catch (err) {
         console.error('Load error:', err);
-        msg.textContent = `Failed to load card for ${filename}.`;
-      }
-    }
-
-    async function loadCurrent() {
-      const filename = MODEL_FILES[currentModelIndex];
-      if (showModel) {
-        await loadModel(filename);
-      } else {
-        await loadCard(filename);
+        msg.textContent = `Failed to load content for ${filename}.`;
       }
     }
 
@@ -363,8 +355,6 @@
     }
 
     function handleClick(event) {
-      if (!showModel) return; // No interaction if model hidden (card not clickable for sound)
-
       // Normalize pointer position
       pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
       pointer.y = - (event.clientY / window.innerHeight) * 2 + 1;
@@ -373,8 +363,19 @@
 
       const intersects = raycaster.intersectObjects(scene.children, true);
 
-      if (intersects.length > 0 && intersects[0].object.isMesh) { // Hit a mesh in the model
-        playSound();
+      if (intersects.length > 0 && intersects[0].object.isMesh) {
+        const hitObject = intersects[0].object;
+        let isModelHit = false;
+        let isCardHit = false;
+
+        hitObject.traverseAncestors(anc => {
+          if (anc.userData.isModel) isModelHit = true;
+          if (anc.userData.isCard) isCardHit = true;
+        });
+
+        if ((showModel && isModelHit) || (!showModel && isCardHit)) {
+          playSound();
+        }
       }
     }
 
@@ -414,7 +415,7 @@
 
         buildMenu();
         currentModelIndex = 0;
-        await loadCurrent();
+        await loadContent(MODEL_FILES[currentModelIndex]);
       } catch (error) {
         console.error(error);
         msg.textContent = 'Failed to fetch model list.';
@@ -438,7 +439,7 @@
 
         tile.addEventListener('click', async () => {
           currentModelIndex = index;
-          await loadCurrent();
+          await loadContent(filename);
           menuPanel.style.display = 'none';
         });
 
@@ -480,7 +481,7 @@
         const box = new THREE.Box3().setFromObject(pivot);
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
-        cameraRadius = maxDim * 2.5;
+        cameraRadius = maxDim * 1.5;
         targetRotation = { x: 0.3, y: 0.8 };
         rotation = { x: 0.3, y: 0.8 };
       }
@@ -489,7 +490,7 @@
     btnToggleModel.addEventListener("click", () => {
       showModel = !showModel;
       btnToggleModel.textContent = showModel ? "Hide Model" : "Show Model";
-      loadCurrent();
+      loadContent(MODEL_FILES[currentModelIndex]);
     });
 
     // Render loop
