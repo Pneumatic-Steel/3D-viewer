@@ -271,7 +271,7 @@
 
       const baseName = filename.split('/').pop().replace('.glb', '');
       const frontUrl = getThumbnailUrl(filename);
-      const backUrl = 'models/thumbnails/cardbacking.jpg';
+      const backUrl = 'models/thumbnails/cardbacking.png';
 
       try {
         const [frontTexture, backTexture] = await Promise.all([
@@ -500,3 +500,4 @@
 </body>
 </html>
 ```
+
