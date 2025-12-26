@@ -1,4 +1,3 @@
-
 <!doctype html> 
 <html lang="en"> 
 <head> 
@@ -183,7 +182,9 @@
  
     // Model loading
     const loader = new THREE.GLTFLoader(); 
-    let modelRoot = null; 
+    let modelRoot = null;
+    let userZoomOffset = 0; // Track user's zoom preference
+    let isFirstModel = true; 
     
     function loadModel(filename) {
       msg.style.display = 'grid';
@@ -211,10 +212,15 @@
           modelRoot.position.z += (modelRoot.position.z - center.z); 
    
           const maxDim = Math.max(size.x, size.y, size.z);
+          const baseDistance = maxDim * 2.5;
           
-          // Only set initial camera distance for first model
-          if (cameraRadius === 5) {
-            cameraRadius = maxDim * 2.5;
+          // For first model, set camera distance
+          // For subsequent models, maintain the user's zoom offset
+          if (isFirstModel) {
+            cameraRadius = baseDistance;
+            isFirstModel = false;
+          } else {
+            cameraRadius = baseDistance + userZoomOffset;
           }
           
           // Update camera target to model center
@@ -261,6 +267,14 @@
     
     btnPrev.addEventListener("click", () => {
       if (currentModelIndex > 0) {
+        // Calculate zoom offset before switching
+        if (modelRoot) {
+          const box = new THREE.Box3().setFromObject(modelRoot);
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const baseDistance = maxDim * 2.5;
+          userZoomOffset = cameraRadius - baseDistance;
+        }
         currentModelIndex--;
         loadModel(MODEL_FILES[currentModelIndex]);
       }
@@ -268,6 +282,14 @@
     
     btnNext.addEventListener("click", () => {
       if (currentModelIndex < MODEL_FILES.length - 1) {
+        // Calculate zoom offset before switching
+        if (modelRoot) {
+          const box = new THREE.Box3().setFromObject(modelRoot);
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const baseDistance = maxDim * 2.5;
+          userZoomOffset = cameraRadius - baseDistance;
+        }
         currentModelIndex++;
         loadModel(MODEL_FILES[currentModelIndex]);
       }
