@@ -111,7 +111,7 @@
     renderer.domElement.addEventListener('wheel', (e) => {
       e.preventDefault();
       cameraRadius += e.deltaY * 0.01;
-      cameraRadius = Math.max(1, Math.min(20, cameraRadius));
+      cameraRadius = Math.max(0.5, Math.min(100, cameraRadius));
     });
     
     // Touch controls
@@ -149,7 +149,7 @@
         if (lastTouchDistance > 0) {
           const delta = lastTouchDistance - distance;
           cameraRadius += delta * 0.05;
-          cameraRadius = Math.max(1, Math.min(20, cameraRadius));
+          cameraRadius = Math.max(0.5, Math.min(100, cameraRadius));
         }
         
         lastTouchDistance = distance;
