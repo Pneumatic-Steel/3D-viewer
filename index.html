@@ -1,3 +1,4 @@
+
 <!doctype html> 
 <html lang="en"> 
 <head> 
@@ -209,8 +210,12 @@
           modelRoot.position.y += (modelRoot.position.y - center.y); 
           modelRoot.position.z += (modelRoot.position.z - center.z); 
    
-          const maxDim = Math.max(size.x, size.y, size.z); 
-          cameraRadius = maxDim * 1.8;
+          const maxDim = Math.max(size.x, size.y, size.z);
+          
+          // Only set initial camera distance for first model
+          if (cameraRadius === 5) {
+            cameraRadius = maxDim * 2.5;
+          }
           
           // Update camera target to model center
           cameraTarget.set(0, size.y / 2, 0);
