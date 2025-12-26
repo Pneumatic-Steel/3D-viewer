@@ -1,78 +1,78 @@
-<!doctype html> 
-<html lang="en"> 
-<head> 
-  <meta charset="utf-8" /> 
-  <meta name="viewport" content="width=device-width,initial-scale=1" /> 
-  <title>3D Model Viewer</title> 
-  <style> 
-    html, body { height: 100%; margin: 0; background: #111; overflow: hidden; } 
-    #ui { 
-      position: fixed; left: 12px; top: 12px; z-index: 10; 
-      color: #fff; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; 
-      background: rgba(0,0,0,0.55); padding: 10px 12px; border-radius: 10px; 
-      backdrop-filter: blur(6px); 
-      max-width: calc(100vw - 24px); 
-    } 
-    #ui h1 { font-size: 14px; margin: 0 0 6px 0; font-weight: 600; } 
-    #ui .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; } 
-    #ui button { 
-      border: 0; border-radius: 8px; padding: 8px 10px; 
-      background: #2b2b2b; color: #fff; cursor: pointer; 
-    } 
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>3D Model Viewer</title>
+  <style>
+    html, body { height: 100%; margin: 0; background: #111; overflow: hidden; }
+    #ui {
+      position: fixed; left: 12px; top: 12px; z-index: 10;
+      color: #fff; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: rgba(0,0,0,0.55); padding: 10px 12px; border-radius: 10px;
+      backdrop-filter: blur(6px);
+      max-width: calc(100vw - 24px);
+    }
+    #ui h1 { font-size: 14px; margin: 0 0 6px 0; font-weight: 600; }
+    #ui .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+    #ui button {
+      border: 0; border-radius: 8px; padding: 8px 10px;
+      background: #2b2b2b; color: #fff; cursor: pointer;
+    }
     #ui button:hover { background: #3a3a3a; }
     #ui button:disabled { background: #1a1a1a; color: #666; cursor: not-allowed; }
-    #ui label { font-size: 12px; opacity: 0.9; display: flex; gap: 6px; align-items: center; } 
-    #ui input[type="range"] { width: 140px; } 
+    #ui label { font-size: 12px; opacity: 0.9; display: flex; gap: 6px; align-items: center; }
+    #ui input[type="range"] { width: 140px; }
     #modelCounter { font-size: 12px; opacity: 0.8; }
-    #msg { 
-      position: fixed; inset: 0; display: grid; place-items: center; 
-      color: #ddd; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; 
-    } 
-    canvas { display: block; } 
-  </style> 
-</head> 
-<body> 
-  <div id="ui"> 
-    <h1>3D Model Viewer</h1> 
+    #msg {
+      position: fixed; inset: 0; display: grid; place-items: center;
+      color: #ddd; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <h1>3D Model Viewer</h1>
     <div class="row">
       <button id="prevModel">← Previous</button>
       <span id="modelCounter">Model 1 of 1</span>
       <button id="nextModel">Next →</button>
     </div>
-    <div class="row"> 
-      <button id="reset">Reset View</button> 
-      <button id="toggleRotate">Auto-rotate: ON</button> 
-      <label>Speed <input id="speed" type="range" min="0" max="2" step="0.01" value="0.6"></label> 
-    </div> 
-  </div> 
- 
-  <div id="msg">Loading model…</div> 
- 
+    <div class="row">
+      <button id="reset">Reset View</button>
+      <button id="toggleRotate">Auto-rotate: ON</button>
+      <label>Speed <input id="speed" type="range" min="0" max="2" step="0.01" value="0.6"></label>
+    </div>
+  </div>
+
+  <div id="msg">Loading model…</div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-  <script> 
+  <script>
     // Configuration: Add your model filenames here
     const MODEL_FILES = [
       'base.glb',
       'model2.glb',
       'model3.glb'
     ];
-    
+
     let currentModelIndex = 0;
-    
-    const msg = document.getElementById("msg"); 
- 
-    const scene = new THREE.Scene(); 
-    scene.background = new THREE.Color(0x111111); 
- 
-    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 2000); 
-    camera.position.set(2.5, 1.7, 2.5); 
- 
-    const renderer = new THREE.WebGLRenderer({ antialias: true }); 
-    renderer.setSize(window.innerWidth, window.innerHeight); 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
-    document.body.appendChild(renderer.domElement); 
- 
+
+    const msg = document.getElementById("msg");
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x111111);
+
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 2000);
+    camera.position.set(2.5, 1.7, 2.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    document.body.appendChild(renderer.domElement);
+
     // Basic orbit controls implementation
     let isDragging = false;
     let previousMousePosition = { x: 0, y: 0 };
@@ -80,43 +80,43 @@
     let targetRotation = { x: 0.3, y: 0.8 };
     let cameraRadius = 5;
     let cameraTarget = new THREE.Vector3(0, 0, 0); // Fixed point at origin
-    
+
     // Mouse controls
     renderer.domElement.addEventListener('mousedown', (e) => {
       isDragging = true;
       previousMousePosition = { x: e.clientX, y: e.clientY };
     });
-    
+
     renderer.domElement.addEventListener('mousemove', (e) => {
       if (isDragging) {
         const deltaX = e.clientX - previousMousePosition.x;
         const deltaY = e.clientY - previousMousePosition.y;
-        
+
         targetRotation.y += deltaX * 0.005;
         targetRotation.x += deltaY * 0.005;
         targetRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetRotation.x));
-        
+
         previousMousePosition = { x: e.clientX, y: e.clientY };
       }
     });
-    
+
     renderer.domElement.addEventListener('mouseup', () => {
       isDragging = false;
     });
-    
+
     renderer.domElement.addEventListener('mouseleave', () => {
       isDragging = false;
     });
-    
+
     renderer.domElement.addEventListener('wheel', (e) => {
       e.preventDefault();
       cameraRadius += e.deltaY * 0.01;
       cameraRadius = Math.max(0.5, Math.min(100, cameraRadius));
     });
-    
+
     // Touch controls
     let lastTouchDistance = 0;
-    
+
     renderer.domElement.addEventListener('touchstart', (e) => {
       e.preventDefault();
       if (e.touches.length === 1) {
@@ -129,183 +129,188 @@
         lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
       }
     });
-    
+
     renderer.domElement.addEventListener('touchmove', (e) => {
       e.preventDefault();
       if (e.touches.length === 1 && isDragging) {
         const deltaX = e.touches[0].clientX - previousMousePosition.x;
         const deltaY = e.touches[0].clientY - previousMousePosition.y;
-        
+
         targetRotation.y += deltaX * 0.005;
         targetRotation.x += deltaY * 0.005;
         targetRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetRotation.x));
-        
+
         previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       } else if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        
+
         if (lastTouchDistance > 0) {
           const delta = lastTouchDistance - distance;
           cameraRadius += delta * 0.05;
           cameraRadius = Math.max(0.5, Math.min(100, cameraRadius));
         }
-        
+
         lastTouchDistance = distance;
       }
     });
-    
+
     renderer.domElement.addEventListener('touchend', (e) => {
       e.preventDefault();
       isDragging = false;
       lastTouchDistance = 0;
     });
-    
+
     function updateCamera() {
       rotation.x += (targetRotation.x - rotation.x) * 0.1;
       rotation.y += (targetRotation.y - rotation.y) * 0.1;
-      
+
       camera.position.x = cameraTarget.x + cameraRadius * Math.cos(rotation.x) * Math.sin(rotation.y);
       camera.position.y = cameraTarget.y + cameraRadius * Math.sin(rotation.x);
       camera.position.z = cameraTarget.z + cameraRadius * Math.cos(rotation.x) * Math.cos(rotation.y);
       camera.lookAt(cameraTarget);
     }
- 
-    // Lights 
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x222233, 1.0); 
-    scene.add(hemi); 
- 
-    const dir = new THREE.DirectionalLight(0xffffff, 1.2); 
-    dir.position.set(3, 6, 4); 
-    scene.add(dir); 
- 
+
+    // Lights
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x222233, 1.0);
+    scene.add(hemi);
+
+    const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+    dir.position.set(3, 6, 4);
+    scene.add(dir);
+
     // Model loading
-    const loader = new THREE.GLTFLoader(); 
+    const loader = new THREE.GLTFLoader();
     let modelRoot = null;
-    let isFirstModel = true; 
-    
+    let isFirstModel = true;
+
     function loadModel(filename) {
       msg.style.display = 'grid';
       msg.textContent = 'Loading model…';
-      
+
       // Remove existing model
       if (modelRoot) {
         scene.remove(modelRoot);
         modelRoot = null;
       }
-      
-      loader.load( 
-        filename, 
-        (gltf) => { 
-          modelRoot = gltf.scene; 
-          scene.add(modelRoot); 
-   
-          // Center model at origin, sitting on the ground
-          const box = new THREE.Box3().setFromObject(modelRoot); 
-          const size = box.getSize(new THREE.Vector3()); 
-          const center = box.getCenter(new THREE.Vector3()); 
-   
-          // Position so the bottom of the model is at y=0
-          modelRoot.position.x = -center.x; 
-          modelRoot.position.y = -box.min.y; 
-          modelRoot.position.z = -center.z; 
-   
+
+      loader.load(
+        filename,
+        (gltf) => {
+          modelRoot = gltf.scene;
+          scene.add(modelRoot);
+
+          // === FIXED CENTERING CODE ===
+          const box = new THREE.Box3().setFromObject(modelRoot);
+          const center = box.getCenter(new THREE.Vector3());
+          const size = box.getSize(new THREE.Vector3());
+
+          // Shift so geometric center is at (0,0,0)
+          modelRoot.position.x = -center.x;
+          modelRoot.position.y = -center.y;
+          modelRoot.position.z = -center.z;
+
+          // Optional: raise model so it sits on the ground (bottom at y=0)
+          // Comment out the next line if you want it fully centered at origin
+          modelRoot.position.y += size.y / 2;
+
           const maxDim = Math.max(size.x, size.y, size.z);
-          
+
           // Only set initial camera for first model
           if (isFirstModel) {
             cameraRadius = maxDim * 2.5;
-            camera.position.set(cameraRadius, cameraRadius * 0.75, cameraRadius); 
+            camera.position.set(cameraRadius, cameraRadius * 0.75, cameraRadius);
             targetRotation.y = Math.atan2(camera.position.x, camera.position.z);
             targetRotation.x = Math.asin(camera.position.y / cameraRadius);
             rotation = { ...targetRotation };
             isFirstModel = false;
           }
-   
+
           msg.style.display = "none";
           updateModelCounter();
-        }, 
-        (xhr) => { 
-          if (xhr.total) { 
-            const pct = Math.round((xhr.loaded / xhr.total) * 100); 
-            msg.textContent = `Loading model… ${pct}%`; 
-          } 
-        }, 
-        (err) => { 
-          console.error('Load error:', err); 
-          msg.textContent = `Failed to load ${filename}. Check that the file exists.`; 
-        } 
+        },
+        (xhr) => {
+          if (xhr.total) {
+            const pct = Math.round((xhr.loaded / xhr.total) * 100);
+            msg.textContent = `Loading model… ${pct}%`;
+          }
+        },
+        (err) => {
+          console.error('Load error:', err);
+          msg.textContent = `Failed to load ${filename}. Check that the file exists.`;
+        }
       );
     }
-    
+
     function updateModelCounter() {
-      document.getElementById('modelCounter').textContent = 
+      document.getElementById('modelCounter').textContent =
         `Model ${currentModelIndex + 1} of ${MODEL_FILES.length}`;
       document.getElementById('prevModel').disabled = currentModelIndex === 0;
       document.getElementById('nextModel').disabled = currentModelIndex === MODEL_FILES.length - 1;
     }
-    
+
     // Load first model
     loadModel(MODEL_FILES[currentModelIndex]);
- 
-    // UI 
-    let autoRotate = true; 
-    const btnRotate = document.getElementById("toggleRotate"); 
-    const btnReset = document.getElementById("reset"); 
+
+    // UI
+    let autoRotate = true;
+    const btnRotate = document.getElementById("toggleRotate");
+    const btnReset = document.getElementById("reset");
     const speed = document.getElementById("speed");
     const btnPrev = document.getElementById("prevModel");
     const btnNext = document.getElementById("nextModel");
-    
+
     btnPrev.addEventListener("click", () => {
       if (currentModelIndex > 0) {
         currentModelIndex--;
         loadModel(MODEL_FILES[currentModelIndex]);
       }
     });
-    
+
     btnNext.addEventListener("click", () => {
       if (currentModelIndex < MODEL_FILES.length - 1) {
         currentModelIndex++;
         loadModel(MODEL_FILES[currentModelIndex]);
       }
     });
- 
-    btnRotate.addEventListener("click", () => { 
-      autoRotate = !autoRotate; 
-      btnRotate.textContent = `Auto-rotate: ${autoRotate ? "ON" : "OFF"}`; 
-    }); 
- 
-    btnReset.addEventListener("click", () => { 
+
+    btnRotate.addEventListener("click", () => {
+      autoRotate = !autoRotate;
+      btnRotate.textContent = `Auto-rotate: ${autoRotate ? "ON" : "OFF"}`;
+    });
+
+    btnReset.addEventListener("click", () => {
       if (modelRoot) {
         const box = new THREE.Box3().setFromObject(modelRoot);
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
-        cameraRadius = maxDim * 1.8;
+        cameraRadius = maxDim * 2.5;
         targetRotation = { x: 0.3, y: 0.8 };
+        rotation = { x: 0.3, y: 0.8 };
       }
-    }); 
- 
-    // Render loop 
-    const clock = new THREE.Clock(); 
-    function animate() { 
-      requestAnimationFrame(animate); 
+    });
+
+    // Render loop
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
       updateCamera();
- 
-      if (modelRoot && autoRotate && !isDragging) { 
-        const dt = clock.getDelta(); 
-        modelRoot.rotation.y += dt * parseFloat(speed.value); 
-      } 
- 
-      renderer.render(scene, camera); 
-    } 
-    animate(); 
- 
-    window.addEventListener("resize", () => { 
-      camera.aspect = window.innerWidth / window.innerHeight; 
-      camera.updateProjectionMatrix(); 
-      renderer.setSize(window.innerWidth, window.innerHeight); 
-    }); 
-  </script> 
-</body> 
+
+      if (modelRoot && autoRotate && !isDragging) {
+        const dt = clock.getDelta();
+        modelRoot.rotation.y += dt * parseFloat(speed.value);
+      }
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
 </html>
