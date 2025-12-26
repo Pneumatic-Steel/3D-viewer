@@ -212,18 +212,17 @@
    
           const maxDim = Math.max(size.x, size.y, size.z);
           
-          // Only set camera distance for the first model loaded
+          // Only set camera distance for the very first model loaded
           if (isFirstModel) {
             cameraRadius = maxDim * 2.5;
             camera.position.set(cameraRadius, cameraRadius * 0.75, cameraRadius); 
             targetRotation.y = Math.atan2(camera.position.x, camera.position.z);
             targetRotation.x = Math.asin(camera.position.y / cameraRadius);
             rotation = { ...targetRotation };
+            cameraTarget.set(0, 0, 0);
             isFirstModel = false;
           }
-          
-          // Always update camera target to center of new model (at ground level)
-          cameraTarget.set(0, 0, 0);
+          // For all other models, don't touch camera or target at all
    
           msg.style.display = "none";
           updateModelCounter();
