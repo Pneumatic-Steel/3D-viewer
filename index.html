@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>3D Model Viewer</title>
+  <style>
+    html, body { height: 100%; margin: 0; background: #111; overflow: hidden; }
+    #ui {
+      position: fixed; left: 12px; top: 12px; z-index: 10;
+      color: #fff; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: rgba(0,0,0,0.55); padding: 10px 12px; border-radius: 10px;
+      backdrop-filter: blur(6px);
+      max-width: calc(100vw - 24px);
+    }
+    #ui h1 { font-size: 14px; margin: 0 0 6px 0; font-weight: 600; }
+    #ui .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    #ui button {
+      border: 0; border-radius: 8px; padding: 8px 10px;
+      background: #2b2b2b; color: #fff; cursor: pointer;
+    }
+    #ui button:hover { background: #3a3a3a; }
+    #ui label { font-size: 12px; opacity: 0.9; display: flex; gap: 6px; align-items: center; }
+    #ui input[type="range"] { width: 140px; }
+    #msg {
+      position: fixed; inset: 0; display: grid; place-items: center;
+      color: #ddd; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <h1>3D Model Viewer</h1>
+    <div class="row">
+      <button id="reset">Reset View</button>
+      <button id="toggleRotate">Auto-rotate: ON</button>
+      <label>Speed <input id="speed" type="range" min="0" max="2" step="0.01" value="0.6"></label>
+    </div>
+  </div>
+
+  <div id="msg">Loading model…</div>
+
+  <script type="module">
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+    import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js";
+    import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+
+    const msg = document.getElementById("msg");
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x111111);
+
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 2000);
+    camera.position.set(2.5, 1.7, 2.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.target.set(0, 0.5, 0);
+
+    // Lights
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x222233, 1.0);
+    scene.add(hemi);
+
+    const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+    dir.position.set(3, 6, 4);
+    scene.add(dir);
+
+    // Ground (subtle reference plane)
+    const groundGeo = new THREE.PlaneGeometry(50, 50);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 1.0, metalness: 0.0 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.001;
+    scene.add(ground);
+
+    // Load model
+    const loader = new GLTFLoader();
+    let modelRoot = null;
+
+    loader.load(
+      "./base.glb",
+      (gltf) => {
+        modelRoot = gltf.scene;
+        scene.add(modelRoot);
+
+        // Center + frame model
+        const box = new THREE.Box3().setFromObject(modelRoot);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+
+        modelRoot.position.x += (modelRoot.position.x - center.x);
+        modelRoot.position.y += (modelRoot.position.y - center.y);
+        modelRoot.position.z += (modelRoot.position.z - center.z);
+
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const fitDist = maxDim * 1.8;
+
+        camera.position.set(fitDist, fitDist * 0.75, fitDist);
+        controls.target.set(0, 0, 0);
+        controls.update();
+
+        msg.style.display = "none";
+      },
+      (xhr) => {
+        if (xhr.total) {
+          const pct = Math.round((xhr.loaded / xhr.total) * 100);
+          msg.textContent = `Loading model… ${pct}%`;
+        }
+      },
+      (err) => {
+        console.error(err);
+        msg.textContent = "Failed to load model. Check that base.glb is in the same folder.";
+      }
+    );
+
+    // UI
+    let autoRotate = true;
+    const btnRotate = document.getElementById("toggleRotate");
+    const btnReset = document.getElementById("reset");
+    const speed = document.getElementById("speed");
+
+    btnRotate.addEventListener("click", () => {
+      autoRotate = !autoRotate;
+      btnRotate.textContent = `Auto-rotate: ${autoRotate ? "ON" : "OFF"}`;
+    });
+
+    btnReset.addEventListener("click", () => {
+      controls.reset();
+    });
+
+    // Render loop
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+
+      if (modelRoot && autoRotate) {
+        const dt = clock.getDelta();
+        modelRoot.rotation.y += dt * parseFloat(speed.value);
+      }
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
