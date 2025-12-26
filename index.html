@@ -210,7 +210,10 @@
           modelRoot.position.z += (modelRoot.position.z - center.z); 
    
           const maxDim = Math.max(size.x, size.y, size.z); 
-          cameraRadius = maxDim * 1.8; 
+          cameraRadius = maxDim * 1.8;
+          
+          // Update camera target to model center
+          cameraTarget.set(0, size.y / 2, 0);
           
           camera.position.set(cameraRadius, cameraRadius * 0.75, cameraRadius); 
           targetRotation.y = Math.atan2(camera.position.x, camera.position.z);
