@@ -1,3 +1,4 @@
+```html
 <!doctype html>
 <html lang="en">
 <head>
@@ -285,12 +286,12 @@
 
         // Front
         const frontGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
-        const frontMaterial = new THREE.MeshBasicMaterial({ map: frontTexture, side: THREE.FrontSide });
+        const frontMaterial = new THREE.MeshBasicMaterial({ map: frontTexture, side: THREE.FrontSide, transparent: false });
         const frontMesh = new THREE.Mesh(frontGeometry, frontMaterial);
 
-        // Back
+        // Back - same size
         const backGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
-        const backMaterial = new THREE.MeshBasicMaterial({ map: backTexture, side: THREE.FrontSide });
+        const backMaterial = new THREE.MeshBasicMaterial({ map: backTexture, side: THREE.FrontSide, transparent: true });
         const backMesh = new THREE.Mesh(backGeometry, backMaterial);
         backMesh.rotation.y = Math.PI;
 
@@ -347,6 +348,8 @@
     }
 
     function handleClick(event) {
+      if (!showModel) return; // No interaction if model hidden (card not interactive)
+
       // Normalize pointer position
       pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
       pointer.y = - (event.clientY / window.innerHeight) * 2 + 1;
@@ -500,4 +503,3 @@
 </body>
 </html>
 ```
-
