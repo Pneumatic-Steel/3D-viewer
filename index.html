@@ -4,16 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>3D Model Viewer</title>
+
   <style>
     html, body {
       height: 100%;
       margin: 0;
       overflow: hidden;
-      background-color: #111;
-      background-image: url('pokemonBackground.gif');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
+      background: #111 url('pokemonBackground.gif') center / cover no-repeat;
     }
 
     #ui {
@@ -22,25 +19,19 @@
       top: 12px;
       z-index: 10;
       color: #fff;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      font-family: system-ui, sans-serif;
       background: rgba(0,0,0,0.55);
       padding: 10px 12px;
       border-radius: 10px;
       backdrop-filter: blur(6px);
     }
 
-    #ui h1 {
-      font-size: 14px;
-      margin: 0 0 6px 0;
-      font-weight: 600;
-    }
-
     #ui .row {
       display: flex;
       gap: 8px;
-      flex-wrap: wrap;
       align-items: center;
       margin-bottom: 6px;
+      font-size: 12px;
     }
 
     #ui button {
@@ -52,11 +43,9 @@
       cursor: pointer;
     }
 
-    #ui button:hover { background: #3a3a3a; }
-
-    #modelCounter {
-      font-size: 12px;
-      opacity: 0.8;
+    canvas {
+      position: absolute;
+      inset: 0;
     }
 
     #msg {
@@ -65,73 +54,19 @@
       display: grid;
       place-items: center;
       color: #ddd;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    }
-
-    canvas {
-      display: block;
-      position: absolute;
-      inset: 0;
-      z-index: 2;
-    }
-
-    #menuButton {
-      position: fixed;
-      top: 12px;
-      right: 12px;
-      z-index: 11;
-    }
-
-    #menuPanel {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.8);
-      z-index: 12;
-      display: none;
-      flex-direction: column;
-      padding: 20px;
-      overflow-y: auto;
-    }
-
-    #menuGrid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 10px;
-    }
-
-    .menuTile img {
-      width: 100%;
-      border-radius: 8px;
-      background: #1a1a1a;
-      object-fit: contain;
-      cursor: pointer;
-    }
-
-    .menuTile.selected img {
-      box-shadow: 0 0 0 2px #fff;
+      font-family: system-ui, sans-serif;
     }
   </style>
 </head>
 
 <body>
   <div id="ui">
-    <h1>3D Model Viewer</h1>
     <div class="row">
-      <span id="modelCounter">Model</span>
-    </div>
-    <div class="row">
-      <button id="reset">Reset View</button>
-      <button id="toggleRotate">Auto-rotate: OFF</button>
+      <button id="reset">Reset</button>
+      <button id="toggleRotate">Rotate: OFF</button>
       <button id="toggleModel">Hide Model</button>
       <label>Speed <input id="speed" type="range" min="0" max="2" step="0.01" value="0.6"></label>
     </div>
-  </div>
-
-  <button id="menuButton">☰ Menu</button>
-
-  <div id="menuPanel">
-    <button id="menuClose">Close</button>
-    <div id="menuGrid"></div>
   </div>
 
   <div id="msg">Loading…</div>
@@ -144,6 +79,7 @@
     let currentModelIndex = 0;
     let currentSound = null;
     let showModel = true;
+    let autoRotate = false;
 
     const msg = document.getElementById("msg");
 
@@ -157,18 +93,25 @@
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     document.body.appendChild(renderer.domElement);
 
-    const loader = new THREE.GLTFLoader();
-    const textureLoader = new THREE.TextureLoader();
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x222233, 1);
+    scene.add(hemi);
 
-    let pivot = new THREE.Group();
+    const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+    dir.position.set(3, 6, 4);
+    scene.add(dir);
+
+    const loader = new THREE.GLTFLoader();
+    const texLoader = new THREE.TextureLoader();
+
+    const pivot = new THREE.Group(); // model-only rotation
     scene.add(pivot);
 
     let modelRoot = null;
     let cardGroup = null;
 
-    function loadSound(filename) {
+    function loadSound(file) {
       if (currentSound) currentSound.pause();
-      const base = filename.split('/').pop().replace('.glb', '');
+      const base = file.split('/').pop().replace('.glb', '');
       currentSound = new Audio(`sounds/${base}.mp3`);
     }
 
@@ -178,22 +121,22 @@
       currentSound.play().catch(()=>{});
     }
 
-    async function loadContent(filename) {
-      msg.style.display = 'grid';
+    async function loadContent(file) {
+      msg.style.display = "grid";
 
       if (modelRoot) pivot.remove(modelRoot);
       if (cardGroup) scene.remove(cardGroup);
 
       pivot.rotation.set(0,0,0);
 
-      const base = filename.split('/').pop().replace('.glb', '');
+      const base = file.split('/').pop().replace('.glb', '');
 
-      const frontTex = await textureLoader.loadAsync(`models/thumbnails/${base}.jpg`);
-      const backTex  = await textureLoader.loadAsync(`models/thumbnails/cardbacking.png`);
+      const frontTex = await texLoader.loadAsync(`models/thumbnails/${base}.jpg`);
+      const backTex  = await texLoader.loadAsync(`models/thumbnails/cardbacking.png`);
 
-      const aspect = frontTex.image.width / frontTex.image.height;
+      // PHYSICAL CARD SIZE (ONE SIZE, BOTH SIDES)
       const w = 1;
-      const h = w / aspect;
+      const h = w * (frontTex.image.height / frontTex.image.width);
 
       cardGroup = new THREE.Group();
       cardGroup.userData.isCard = true;
@@ -205,15 +148,15 @@
 
       const back = new THREE.Mesh(
         new THREE.PlaneGeometry(w, h),
-        new THREE.MeshBasicMaterial({ map: backTex, transparent: true })
+        new THREE.MeshBasicMaterial({ map: backTex })
       );
       back.rotation.y = Math.PI;
 
       cardGroup.add(front, back);
-      scene.add(cardGroup); // 🔥 FIX: card is NOT parented to pivot
+      scene.add(cardGroup);
 
       if (showModel) {
-        const gltf = await loader.loadAsync(filename);
+        const gltf = await loader.loadAsync(file);
         modelRoot = gltf.scene;
         modelRoot.userData.isModel = true;
 
@@ -228,7 +171,7 @@
         cardGroup.scale.setScalar(size.y / h * 1.5);
       }
 
-      loadSound(filename);
+      loadSound(file);
       msg.style.display = "none";
     }
 
@@ -258,12 +201,9 @@
       }
     });
 
-    let autoRotate = false;
-    const speed = document.getElementById("speed");
-
     document.getElementById("toggleRotate").onclick = () => {
       autoRotate = !autoRotate;
-      toggleRotate.textContent = `Auto-rotate: ${autoRotate ? "ON" : "OFF"}`;
+      toggleRotate.textContent = `Rotate: ${autoRotate ? "ON" : "OFF"}`;
     };
 
     document.getElementById("toggleModel").onclick = () => {
@@ -272,22 +212,24 @@
       loadContent(MODEL_FILES[currentModelIndex]);
     };
 
-    const clock = new THREE.Clock();
+    document.getElementById("reset").onclick = () => {
+      pivot.rotation.set(0,0,0);
+    };
 
+    const clock = new THREE.Clock();
     function animate() {
       requestAnimationFrame(animate);
       if (autoRotate && showModel) {
-        pivot.rotation.y += clock.getDelta() * speed.value;
+        pivot.rotation.y += clock.getDelta() * document.getElementById("speed").value;
       }
       renderer.render(scene, camera);
     }
-
     animate();
 
     async function init() {
       const res = await fetch('https://api.github.com/repos/pneumatic-steel/3D-viewer/contents/models');
       const data = await res.json();
-      MODEL_FILES = data.filter(f=>f.name.endsWith('.glb')).map(f=>`models/${f.name}`);
+      MODEL_FILES = data.filter(f => f.name.endsWith('.glb')).map(f => `models/${f.name}`);
       loadContent(MODEL_FILES[0]);
     }
 
