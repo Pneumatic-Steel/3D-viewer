@@ -46,18 +46,12 @@
     </div>
   </div>
 
-  <div id="msg">Loading model…</div>
+  <div id="msg">Loading models…</div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <script>
-    // Configuration: Add your model filenames here
-    const MODEL_FILES = [
-      'base.glb',
-      'model2.glb',
-      'model3.glb'
-    ];
-
+    let MODEL_FILES = [];
     let currentModelIndex = 0;
 
     const msg = document.getElementById("msg");
@@ -244,11 +238,37 @@
       document.getElementById('modelCounter').textContent =
         `Model ${currentModelIndex + 1} of ${MODEL_FILES.length}`;
       document.getElementById('prevModel').disabled = currentModelIndex === 0;
-      document.getElementById('nextModel').disabled = currentModelIndex === MODEL_FILES.length - 1;
+      document.getElementById('nextModel').disabled = currentModelIndex === MODEL_FILES.length - 1 || MODEL_FILES.length === 0;
     }
 
-    // Load first model
-    loadModel(MODEL_FILES[currentModelIndex]);
+    // Dynamically fetch list of .glb files from GitHub repo
+    async function init() {
+      msg.textContent = 'Fetching model list…';
+      try {
+        const response = await fetch('https://api.github.com/repos/pneumatic-steel/pneumatic-steel.github.io/contents/');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        MODEL_FILES = data
+          .filter(item => item.type === 'file' && item.name.endsWith('.glb'))
+          .map(item => item.name)
+          .sort((a, b) => a.localeCompare(b)); // Sort alphabetically for consistent order
+
+        if (MODEL_FILES.length === 0) {
+          msg.textContent = 'No .glb models found in the repository.';
+          msg.style.display = 'grid';
+          return;
+        }
+
+        currentModelIndex = 0;
+        loadModel(MODEL_FILES[currentModelIndex]);
+      } catch (error) {
+        console.error('Error fetching model list:', error);
+        msg.textContent = 'Failed to fetch model list. Check console for details.';
+        msg.style.display = 'grid';
+      }
+    }
 
     // UI
     let autoRotate = true;
@@ -308,6 +328,9 @@
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
+
+    // Start by fetching the model list
+    init();
   </script>
 </body>
 </html>
