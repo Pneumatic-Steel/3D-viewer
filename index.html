@@ -1,239 +1,336 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>3D Model Viewer</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>3D Model Viewer</title>
 
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      background: #111 url('pokemonBackground.gif') center / cover no-repeat;
-    }
+<style>
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #111 url('pokemonBackground.gif') center/cover no-repeat;
+}
 
-    #ui {
-      position: fixed;
-      left: 12px;
-      top: 12px;
-      z-index: 10;
-      color: #fff;
-      font-family: system-ui, sans-serif;
-      background: rgba(0,0,0,0.55);
-      padding: 10px 12px;
-      border-radius: 10px;
-      backdrop-filter: blur(6px);
-    }
+#ui {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 10;
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  background: rgba(0,0,0,0.55);
+  padding: 10px 12px;
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+}
 
-    #ui .row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin-bottom: 6px;
-      font-size: 12px;
-    }
+#ui .row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
 
-    #ui button {
-      border: 0;
-      border-radius: 8px;
-      padding: 8px 10px;
-      background: #2b2b2b;
-      color: #fff;
-      cursor: pointer;
-    }
+#ui button {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #2b2b2b;
+  color: #fff;
+  cursor: pointer;
+}
 
-    canvas {
-      position: absolute;
-      inset: 0;
-    }
+canvas {
+  position: absolute;
+  inset: 0;
+}
 
-    #msg {
-      position: fixed;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      color: #ddd;
-      font-family: system-ui, sans-serif;
-    }
-  </style>
+#menuButton {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 11;
+}
+
+#menuPanel {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 12;
+  display: none;
+  flex-direction: column;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+#menuGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.menuTile img {
+  width: 100%;
+  border-radius: 8px;
+  background: #1a1a1a;
+  object-fit: contain;
+}
+
+.menuTile.selected img {
+  box-shadow: 0 0 0 2px #fff;
+}
+
+#msg {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #ddd;
+  font-family: system-ui, sans-serif;
+}
+</style>
 </head>
 
 <body>
-  <div id="ui">
-    <div class="row">
-      <button id="reset">Reset</button>
-      <button id="toggleRotate">Rotate: OFF</button>
-      <button id="toggleModel">Hide Model</button>
-      <label>Speed <input id="speed" type="range" min="0" max="2" step="0.01" value="0.6"></label>
-    </div>
+<div id="ui">
+  <div class="row">
+    <span id="modelCounter">Model</span>
   </div>
+  <div class="row">
+    <button id="reset">Reset</button>
+    <button id="toggleRotate">Rotate: OFF</button>
+    <button id="toggleModel">Hide Model</button>
+    <label>Speed <input id="speed" type="range" min="0" max="2" step="0.01" value="0.6"></label>
+  </div>
+</div>
 
-  <div id="msg">Loading…</div>
+<button id="menuButton">☰ Menu</button>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<div id="menuPanel">
+  <button id="menuClose">Close</button>
+  <div id="menuGrid"></div>
+</div>
 
-  <script>
-    let MODEL_FILES = [];
-    let currentModelIndex = 0;
-    let currentSound = null;
-    let showModel = true;
-    let autoRotate = false;
+<div id="msg">Loading…</div>
 
-    const msg = document.getElementById("msg");
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
-    const scene = new THREE.Scene();
+<script>
+let MODEL_FILES = [];
+let currentModelIndex = 0;
+let currentSound = null;
+let showModel = true;
+let autoRotate = false;
 
-    const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.01, 2000);
-    camera.position.set(2.5, 1.7, 2.5);
+const scene = new THREE.Scene();
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    document.body.appendChild(renderer.domElement);
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.01, 2000);
+camera.position.set(2.5, 1.7, 2.5);
 
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x222233, 1);
-    scene.add(hemi);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
 
-    const dir = new THREE.DirectionalLight(0xffffff, 1.2);
-    dir.position.set(3, 6, 4);
-    scene.add(dir);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x222233, 1));
+const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+dir.position.set(3,6,4);
+scene.add(dir);
 
-    const loader = new THREE.GLTFLoader();
-    const texLoader = new THREE.TextureLoader();
+const loader = new THREE.GLTFLoader();
+const texLoader = new THREE.TextureLoader();
 
-    const pivot = new THREE.Group(); // model-only rotation
-    scene.add(pivot);
+const pivot = new THREE.Group(); // model-only rotation
+scene.add(pivot);
 
-    let modelRoot = null;
-    let cardGroup = null;
+let modelRoot = null;
+let cardGroup = null;
 
-    function loadSound(file) {
-      if (currentSound) currentSound.pause();
-      const base = file.split('/').pop().replace('.glb', '');
-      currentSound = new Audio(`sounds/${base}.mp3`);
-    }
+/* CAMERA ORBIT */
+let isDragging = false;
+let prev = {x:0,y:0};
+let rot = {x:0.3,y:0.8};
+let tgt = {x:0.3,y:0.8};
+let radius = 5;
 
-    function playSound() {
-      if (!currentSound) return;
-      currentSound.currentTime = 0;
-      currentSound.play().catch(()=>{});
-    }
+renderer.domElement.addEventListener("mousedown", e=>{
+  isDragging=true;
+  prev.x=e.clientX; prev.y=e.clientY;
+});
+renderer.domElement.addEventListener("mousemove", e=>{
+  if(!isDragging) return;
+  tgt.y += (e.clientX-prev.x)*0.005;
+  tgt.x += (e.clientY-prev.y)*0.005;
+  tgt.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, tgt.x));
+  prev.x=e.clientX; prev.y=e.clientY;
+});
+renderer.domElement.addEventListener("mouseup", ()=>isDragging=false);
+renderer.domElement.addEventListener("wheel", e=>{
+  e.preventDefault();
+  radius = Math.max(0.5, Math.min(50, radius + e.deltaY*0.01));
+},{passive:false});
 
-    async function loadContent(file) {
-      msg.style.display = "grid";
+function updateCamera(){
+  rot.x += (tgt.x-rot.x)*0.1;
+  rot.y += (tgt.y-rot.y)*0.1;
+  camera.position.set(
+    radius*Math.cos(rot.x)*Math.sin(rot.y),
+    radius*Math.sin(rot.x),
+    radius*Math.cos(rot.x)*Math.cos(rot.y)
+  );
+  camera.lookAt(0,0,0);
+}
 
-      if (modelRoot) pivot.remove(modelRoot);
-      if (cardGroup) scene.remove(cardGroup);
+function loadSound(file){
+  if(currentSound) currentSound.pause();
+  const b=file.split('/').pop().replace('.glb','');
+  currentSound=new Audio(`sounds/${b}.mp3`);
+}
 
-      pivot.rotation.set(0,0,0);
+function playSound(){
+  if(!currentSound) return;
+  currentSound.currentTime=0;
+  currentSound.play().catch(()=>{});
+}
 
-      const base = file.split('/').pop().replace('.glb', '');
+async function loadContent(file){
+  document.getElementById("msg").style.display="grid";
 
-      const frontTex = await texLoader.loadAsync(`models/thumbnails/${base}.jpg`);
-      const backTex  = await texLoader.loadAsync(`models/thumbnails/cardbacking.png`);
+  if(modelRoot) pivot.remove(modelRoot);
+  if(cardGroup) scene.remove(cardGroup);
 
-      // PHYSICAL CARD SIZE (ONE SIZE, BOTH SIDES)
-      const w = 1;
-      const h = w * (frontTex.image.height / frontTex.image.width);
+  pivot.rotation.set(0,0,0);
 
-      cardGroup = new THREE.Group();
-      cardGroup.userData.isCard = true;
+  const base=file.split('/').pop().replace('.glb','');
+  const frontTex=await texLoader.loadAsync(`models/thumbnails/${base}.jpg`);
+  const backTex =await texLoader.loadAsync(`models/thumbnails/cardbacking.png`);
 
-      const front = new THREE.Mesh(
-        new THREE.PlaneGeometry(w, h),
-        new THREE.MeshBasicMaterial({ map: frontTex })
-      );
+  const aspect = frontTex.image.width/frontTex.image.height;
+  const w=1, h=w/aspect;
 
-      const back = new THREE.Mesh(
-        new THREE.PlaneGeometry(w, h),
-        new THREE.MeshBasicMaterial({ map: backTex })
-      );
-      back.rotation.y = Math.PI;
+  cardGroup=new THREE.Group();
+  cardGroup.userData.isCard=true;
 
-      cardGroup.add(front, back);
-      scene.add(cardGroup);
+  const geo=new THREE.PlaneGeometry(w,h);
 
-      if (showModel) {
-        const gltf = await loader.loadAsync(file);
-        modelRoot = gltf.scene;
-        modelRoot.userData.isModel = true;
+  const front=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({map:frontTex}));
+  const back =new THREE.Mesh(geo,new THREE.MeshBasicMaterial({map:backTex}));
+  back.rotation.y=Math.PI;
 
-        const box = new THREE.Box3().setFromObject(modelRoot);
-        const center = box.getCenter(new THREE.Vector3());
-        const size = box.getSize(new THREE.Vector3());
+  cardGroup.add(front,back);
+  scene.add(cardGroup); // 🔑 card stays stationary
 
-        modelRoot.position.sub(center);
-        pivot.add(modelRoot);
+  if(showModel){
+    const gltf=await loader.loadAsync(file);
+    modelRoot=gltf.scene;
+    modelRoot.userData.isModel=true;
 
-        cardGroup.position.z = box.min.z - 0.1;
-        cardGroup.scale.setScalar(size.y / h * 1.5);
-      }
+    const box=new THREE.Box3().setFromObject(modelRoot);
+    const size=box.getSize(new THREE.Vector3());
+    const center=box.getCenter(new THREE.Vector3());
+    modelRoot.position.sub(center);
 
-      loadSound(file);
-      msg.style.display = "none";
-    }
+    pivot.add(modelRoot);
 
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
+    cardGroup.position.z = box.min.z - 0.1;
+    cardGroup.scale.setScalar(size.y/h*1.5);
+    radius = Math.max(size.x,size.y,size.z)*1.5;
+  }
 
-    renderer.domElement.addEventListener("mouseup", e => {
-      pointer.x = (e.clientX / innerWidth) * 2 - 1;
-      pointer.y = -(e.clientY / innerHeight) * 2 + 1;
-      raycaster.setFromCamera(pointer, camera);
+  loadSound(file);
+  document.getElementById("msg").style.display="none";
+  updateCounter();
+}
 
-      const hits = raycaster.intersectObjects(scene.children, true);
-      if (!hits.length) return;
+const raycaster=new THREE.Raycaster();
+const pointer=new THREE.Vector2();
 
-      let o = hits[0].object;
-      let hitModel = false;
-      let hitCard = false;
+renderer.domElement.addEventListener("mouseup",e=>{
+  pointer.x=(e.clientX/innerWidth)*2-1;
+  pointer.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(pointer,camera);
+  const hits=raycaster.intersectObjects(scene.children,true);
+  if(!hits.length) return;
 
-      while (o) {
-        if (o.userData?.isModel) hitModel = true;
-        if (o.userData?.isCard) hitCard = true;
-        o = o.parent;
-      }
+  let o=hits[0].object, hm=false,hc=false;
+  while(o){
+    if(o.userData?.isModel) hm=true;
+    if(o.userData?.isCard) hc=true;
+    o=o.parent;
+  }
+  if((showModel && hm)||(!showModel && hc)) playSound();
+});
 
-      if ((showModel && hitModel) || (!showModel && hitCard)) {
-        playSound();
-      }
-    });
+function updateCounter(){
+  document.getElementById("modelCounter").textContent =
+    `${MODEL_FILES[currentModelIndex]} (${currentModelIndex+1}/${MODEL_FILES.length})`;
+}
 
-    document.getElementById("toggleRotate").onclick = () => {
-      autoRotate = !autoRotate;
-      toggleRotate.textContent = `Rotate: ${autoRotate ? "ON" : "OFF"}`;
+/* MENU */
+const menuPanel=document.getElementById("menuPanel");
+document.getElementById("menuButton").onclick=()=>{
+  menuPanel.style.display="flex";
+};
+document.getElementById("menuClose").onclick=()=>{
+  menuPanel.style.display="none";
+};
+
+function buildMenu(){
+  const g=document.getElementById("menuGrid");
+  g.innerHTML="";
+  MODEL_FILES.forEach((f,i)=>{
+    const d=document.createElement("div");
+    d.className="menuTile"+(i===currentModelIndex?" selected":"");
+    const img=document.createElement("img");
+    img.src=`models/thumbnails/${f.split('/').pop().replace('.glb','.jpg')}`;
+    d.appendChild(img);
+    d.onclick=()=>{
+      currentModelIndex=i;
+      loadContent(f);
+      menuPanel.style.display="none";
     };
+    g.appendChild(d);
+  });
+}
 
-    document.getElementById("toggleModel").onclick = () => {
-      showModel = !showModel;
-      toggleModel.textContent = showModel ? "Hide Model" : "Show Model";
-      loadContent(MODEL_FILES[currentModelIndex]);
-    };
+document.getElementById("toggleRotate").onclick=()=>{
+  autoRotate=!autoRotate;
+  toggleRotate.textContent=`Rotate: ${autoRotate?"ON":"OFF"}`;
+};
 
-    document.getElementById("reset").onclick = () => {
-      pivot.rotation.set(0,0,0);
-    };
+document.getElementById("toggleModel").onclick=()=>{
+  showModel=!showModel;
+  toggleModel.textContent=showModel?"Hide Model":"Show Model";
+  loadContent(MODEL_FILES[currentModelIndex]);
+};
 
-    const clock = new THREE.Clock();
-    function animate() {
-      requestAnimationFrame(animate);
-      if (autoRotate && showModel) {
-        pivot.rotation.y += clock.getDelta() * document.getElementById("speed").value;
-      }
-      renderer.render(scene, camera);
-    }
-    animate();
+document.getElementById("reset").onclick=()=>{
+  tgt={x:0.3,y:0.8};
+};
 
-    async function init() {
-      const res = await fetch('https://api.github.com/repos/pneumatic-steel/3D-viewer/contents/models');
-      const data = await res.json();
-      MODEL_FILES = data.filter(f => f.name.endsWith('.glb')).map(f => `models/${f.name}`);
-      loadContent(MODEL_FILES[0]);
-    }
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  updateCamera();
+  if(autoRotate && showModel){
+    pivot.rotation.y += clock.getDelta()*speed.value;
+  }
+  renderer.render(scene,camera);
+}
+animate();
 
-    init();
-  </script>
+async function init(){
+  const r=await fetch("https://api.github.com/repos/pneumatic-steel/3D-viewer/contents/models");
+  const d=await r.json();
+  MODEL_FILES=d.filter(x=>x.name.endsWith(".glb")).map(x=>`models/${x.name}`);
+  buildMenu();
+  loadContent(MODEL_FILES[0]);
+}
+init();
+</script>
 </body>
 </html>
