@@ -47,11 +47,6 @@
     .menuTile span { display: none; } /* Hide any spans if present, though we'll remove them from code */
     .menuTile:hover img { filter: brightness(1.1); }
     .menuTile.selected img { box-shadow: 0 0 0 2px #fff; }
-
-    #backgroundCard {
-      position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
-      max-width: 40vw; max-height: 80vh; object-fit: contain; z-index: 1;
-    }
   </style>
 </head>
 <body>
@@ -62,7 +57,8 @@
     </div>
     <div class="row">
       <button id="reset">Reset View</button>
-      <button id="toggleRotate">Auto-rotate: ON</button>
+      <button id="toggleRotate">Auto-rotate: OFF</button>
+      <button id="toggleModel">Hide Model</button>
       <label>Speed <input id="speed" type="range" min="0" max="2" step="0.01" value="0.6"></label>
     </div>
   </div>
@@ -76,21 +72,19 @@
 
   <div id="msg">Loading models…</div>
 
-  <img id="backgroundCard" src="" alt="Background Card">
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <script>
     let MODEL_FILES = [];
     let currentModelIndex = 0;
     let currentSound = null; // Current audio element
+    let showModel = true;
 
     const msg = document.getElementById("msg");
     const menuPanel = document.getElementById("menuPanel");
     const menuGrid = document.getElementById("menuGrid");
     const menuButton = document.getElementById("menuButton");
     const menuClose = document.getElementById("menuClose");
-    const backgroundCard = document.getElementById("backgroundCard");
 
     const scene = new THREE.Scene();
 
@@ -104,6 +98,8 @@
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
+
+    const textureLoader = new THREE.TextureLoader();
 
     // Basic orbit controls implementation
     let isDragging = false;
@@ -255,15 +251,80 @@
         // Load sound
         loadSound(filename);
 
-        // Set background card
-        backgroundCard.src = getThumbnailUrl(filename);
-
         msg.style.display = "none";
         updateModelCounter();
         highlightSelectedTile();
       } catch (err) {
         console.error('Load error:', err);
         msg.textContent = `Failed to load ${filename}.`;
+      }
+    }
+
+    async function loadCard(filename) {
+      msg.style.display = 'grid';
+      msg.textContent = 'Loading card…';
+
+      if (pivot) {
+        scene.remove(pivot);
+        pivot = null;
+      }
+
+      const baseName = filename.split('/').pop().replace('.glb', '');
+      const frontUrl = getThumbnailUrl(filename);
+      const backUrl = 'models/thumbnails/cardbacking.jpg';
+
+      try {
+        const [frontTexture, backTexture] = await Promise.all([
+          textureLoader.loadAsync(frontUrl),
+          textureLoader.loadAsync(backUrl)
+        ]);
+
+        const aspect = frontTexture.image.width / frontTexture.image.height;
+        const cardWidth = 1;
+        const cardHeight = cardWidth / aspect;
+
+        // Front
+        const frontGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
+        const frontMaterial = new THREE.MeshBasicMaterial({ map: frontTexture, side: THREE.FrontSide });
+        const frontMesh = new THREE.Mesh(frontGeometry, frontMaterial);
+
+        // Back
+        const backGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
+        const backMaterial = new THREE.MeshBasicMaterial({ map: backTexture, side: THREE.FrontSide });
+        const backMesh = new THREE.Mesh(backGeometry, backMaterial);
+        backMesh.rotation.y = Math.PI;
+
+        pivot = new THREE.Group();
+        pivot.add(frontMesh);
+        pivot.add(backMesh);
+        scene.add(pivot);
+
+        const maxDim = Math.max(cardWidth, cardHeight);
+        cameraRadius = maxDim * 2.5;
+        targetRotation = { x: 0.3, y: 0.8 };
+        rotation = { x: 0.3, y: 0.8 };
+
+        // No sound for card
+        if (currentSound) {
+          currentSound.pause();
+          currentSound = null;
+        }
+
+        msg.style.display = "none";
+        updateModelCounter();
+        highlightSelectedTile();
+      } catch (err) {
+        console.error('Load error:', err);
+        msg.textContent = `Failed to load card for ${filename}.`;
+      }
+    }
+
+    async function loadCurrent() {
+      const filename = MODEL_FILES[currentModelIndex];
+      if (showModel) {
+        await loadModel(filename);
+      } else {
+        await loadCard(filename);
       }
     }
 
@@ -335,7 +396,7 @@
 
         buildMenu();
         currentModelIndex = 0;
-        await loadModel(MODEL_FILES[currentModelIndex]);
+        await loadCurrent();
       } catch (error) {
         console.error(error);
         msg.textContent = 'Failed to fetch model list.';
@@ -359,7 +420,7 @@
 
         tile.addEventListener('click', async () => {
           currentModelIndex = index;
-          await loadModel(filename);
+          await loadCurrent();
           menuPanel.style.display = 'none';
         });
 
@@ -385,9 +446,10 @@
     });
 
     // Other UI
-    let autoRotate = true;
+    let autoRotate = false;
     const btnRotate = document.getElementById("toggleRotate");
     const btnReset = document.getElementById("reset");
+    const btnToggleModel = document.getElementById("toggleModel");
     const speed = document.getElementById("speed");
 
     btnRotate.addEventListener("click", () => {
@@ -404,6 +466,12 @@
         targetRotation = { x: 0.3, y: 0.8 };
         rotation = { x: 0.3, y: 0.8 };
       }
+    });
+
+    btnToggleModel.addEventListener("click", () => {
+      showModel = !showModel;
+      btnToggleModel.textContent = showModel ? "Hide Model" : "Show Model";
+      loadCurrent();
     });
 
     // Render loop
@@ -431,3 +499,4 @@
   </script>
 </body>
 </html>
+```
