@@ -183,7 +183,6 @@
     // Model loading
     const loader = new THREE.GLTFLoader(); 
     let modelRoot = null;
-    let userZoomOffset = 0; // Track user's zoom preference
     let isFirstModel = true; 
     
     function loadModel(filename) {
@@ -212,24 +211,19 @@
           modelRoot.position.z += (modelRoot.position.z - center.z); 
    
           const maxDim = Math.max(size.x, size.y, size.z);
-          const baseDistance = maxDim * 2.5;
           
-          // For first model, set camera distance
-          // For subsequent models, maintain the user's zoom offset
+          // Only set camera distance for the first model loaded
           if (isFirstModel) {
-            cameraRadius = baseDistance;
+            cameraRadius = maxDim * 2.5;
+            camera.position.set(cameraRadius, cameraRadius * 0.75, cameraRadius); 
+            targetRotation.y = Math.atan2(camera.position.x, camera.position.z);
+            targetRotation.x = Math.asin(camera.position.y / cameraRadius);
+            rotation = { ...targetRotation };
             isFirstModel = false;
-          } else {
-            cameraRadius = baseDistance + userZoomOffset;
           }
           
-          // Update camera target to model center
-          cameraTarget.set(0, size.y / 2, 0);
-          
-          camera.position.set(cameraRadius, cameraRadius * 0.75, cameraRadius); 
-          targetRotation.y = Math.atan2(camera.position.x, camera.position.z);
-          targetRotation.x = Math.asin(camera.position.y / cameraRadius);
-          rotation = { ...targetRotation };
+          // Always update camera target to center of new model (at ground level)
+          cameraTarget.set(0, 0, 0);
    
           msg.style.display = "none";
           updateModelCounter();
@@ -267,14 +261,6 @@
     
     btnPrev.addEventListener("click", () => {
       if (currentModelIndex > 0) {
-        // Calculate zoom offset before switching
-        if (modelRoot) {
-          const box = new THREE.Box3().setFromObject(modelRoot);
-          const size = box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const baseDistance = maxDim * 2.5;
-          userZoomOffset = cameraRadius - baseDistance;
-        }
         currentModelIndex--;
         loadModel(MODEL_FILES[currentModelIndex]);
       }
@@ -282,14 +268,6 @@
     
     btnNext.addEventListener("click", () => {
       if (currentModelIndex < MODEL_FILES.length - 1) {
-        // Calculate zoom offset before switching
-        if (modelRoot) {
-          const box = new THREE.Box3().setFromObject(modelRoot);
-          const size = box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const baseDistance = maxDim * 2.5;
-          userZoomOffset = cameraRadius - baseDistance;
-        }
         currentModelIndex++;
         loadModel(MODEL_FILES[currentModelIndex]);
       }
