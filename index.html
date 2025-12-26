@@ -41,12 +41,12 @@
       display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;
     }
     .menuTile {
-      background: #2b2b2b; border-radius: 8px; padding: 8px; cursor: pointer; text-align: center;
+      background: none; border-radius: 8px; padding: 0; cursor: pointer; text-align: center;
     }
-    .menuTile img { width: 100%; height: auto; border-radius: 4px; object-fit: cover; aspect-ratio: 1/1; background: #1a1a1a; }
-    .menuTile span { display: block; margin-top: 4px; font-size: 12px; }
-    .menuTile:hover { background: #3a3a3a; }
-    .menuTile.selected { border: 2px solid #fff; }
+    .menuTile img { width: 100%; height: auto; border-radius: 8px; object-fit: cover; aspect-ratio: 1/1; background: #1a1a1a; }
+    .menuTile span { display: none; } /* Hide any spans if present, though we'll remove them from code */
+    .menuTile:hover img { filter: brightness(1.1); }
+    .menuTile.selected img { box-shadow: 0 0 0 2px #fff; }
   </style>
 </head>
 <body>
@@ -345,11 +345,7 @@
         img.onerror = () => { img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='; }; // fallback
         img.alt = getDisplayName(filename);
 
-        const span = document.createElement('span');
-        span.textContent = getDisplayName(filename);
-
         tile.appendChild(img);
-        tile.appendChild(span);
 
         tile.addEventListener('click', async () => {
           currentModelIndex = index;
