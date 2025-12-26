@@ -1,139 +1,206 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>3D Model Viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <style>
-    html, body {
-      margin: 0;
-      height: 100%;
-      background: #111;
-      overflow: hidden;
-      font-family: system-ui, sans-serif;
-      color: #fff;
+<!doctype html> 
+<html lang="en"> 
+<head> 
+  <meta charset="utf-8" /> 
+  <meta name="viewport" content="width=device-width,initial-scale=1" /> 
+  <title>3D Model Viewer</title> 
+  <style> 
+    html, body { height: 100%; margin: 0; background: #111; overflow: hidden; } 
+    #ui { 
+      position: fixed; left: 12px; top: 12px; z-index: 10; 
+      color: #fff; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; 
+      background: rgba(0,0,0,0.55); padding: 10px 12px; border-radius: 10px; 
+      backdrop-filter: blur(6px); 
+      max-width: calc(100vw - 24px); 
+    } 
+    #ui h1 { font-size: 14px; margin: 0 0 6px 0; font-weight: 600; } 
+    #ui .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; } 
+    #ui button { 
+      border: 0; border-radius: 8px; padding: 8px 10px; 
+      background: #2b2b2b; color: #fff; cursor: pointer; 
+    } 
+    #ui button:hover { background: #3a3a3a; } 
+    #ui label { font-size: 12px; opacity: 0.9; display: flex; gap: 6px; align-items: center; } 
+    #ui input[type="range"] { width: 140px; } 
+    #msg { 
+      position: fixed; inset: 0; display: grid; place-items: center; 
+      color: #ddd; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; 
+    } 
+    canvas { display: block; } 
+  </style> 
+</head> 
+<body> 
+  <div id="ui"> 
+    <h1>3D Model Viewer</h1> 
+    <div class="row"> 
+      <button id="reset">Reset View</button> 
+      <button id="toggleRotate">Auto-rotate: ON</button> 
+      <label>Speed <input id="speed" type="range" min="0" max="2" step="0.01" value="0.6"></label> 
+    </div> 
+  </div> 
+ 
+  <div id="msg">Loading model…</div> 
+ 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script> 
+    const msg = document.getElementById("msg"); 
+ 
+    const scene = new THREE.Scene(); 
+    scene.background = new THREE.Color(0x111111); 
+ 
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 2000); 
+    camera.position.set(2.5, 1.7, 2.5); 
+ 
+    const renderer = new THREE.WebGLRenderer({ antialias: true }); 
+    renderer.setSize(window.innerWidth, window.innerHeight); 
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
+    document.body.appendChild(renderer.domElement); 
+ 
+    // Basic orbit controls implementation (since we can't import OrbitControls from r128 easily)
+    let isDragging = false;
+    let previousMousePosition = { x: 0, y: 0 };
+    let rotation = { x: 0, y: 0 };
+    let targetRotation = { x: 0, y: 0 };
+    let cameraRadius = 5;
+    let cameraTarget = new THREE.Vector3(0, 0.5, 0);
+    
+    renderer.domElement.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      previousMousePosition = { x: e.clientX, y: e.clientY };
+    });
+    
+    renderer.domElement.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const deltaX = e.clientX - previousMousePosition.x;
+        const deltaY = e.clientY - previousMousePosition.y;
+        
+        targetRotation.y += deltaX * 0.005;
+        targetRotation.x += deltaY * 0.005;
+        targetRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetRotation.x));
+        
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      }
+    });
+    
+    renderer.domElement.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+    
+    renderer.domElement.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      cameraRadius += e.deltaY * 0.01;
+      cameraRadius = Math.max(1, Math.min(20, cameraRadius));
+    });
+    
+    function updateCamera() {
+      rotation.x += (targetRotation.x - rotation.x) * 0.1;
+      rotation.y += (targetRotation.y - rotation.y) * 0.1;
+      
+      camera.position.x = cameraTarget.x + cameraRadius * Math.cos(rotation.x) * Math.sin(rotation.y);
+      camera.position.y = cameraTarget.y + cameraRadius * Math.sin(rotation.x);
+      camera.position.z = cameraTarget.z + cameraRadius * Math.cos(rotation.x) * Math.cos(rotation.y);
+      camera.lookAt(cameraTarget);
     }
-
-    #ui {
-      position: fixed;
-      top: 12px;
-      left: 12px;
-      z-index: 10;
-      background: rgba(0,0,0,0.6);
-      padding: 10px;
-      border-radius: 10px;
-      backdrop-filter: blur(6px);
-    }
-
-    button {
-      background: #333;
-      color: #fff;
-      border: none;
-      padding: 6px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-right: 6px;
-    }
-
-    #msg {
-      position: fixed;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      color: #ccc;
-    }
-
-    canvas { display: block; }
-  </style>
-</head>
-<body>
-
-<div id="ui">
-  <button onclick="resetView()">Reset View</button>
-  <button onclick="toggleRotate()">Auto-rotate</button>
-</div>
-
-<div id="msg">Loading model…</div>
-
-<!-- NON-MODULE THREE.JS (THIS IS THE FIX) -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
-
-<script>
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x111111);
-
-  const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 5000);
-  camera.position.set(3, 2, 3);
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(window.devicePixelRatio);
-  document.body.appendChild(renderer.domElement);
-
-  const controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x222233, 1.1));
-
-  const light = new THREE.DirectionalLight(0xffffff, 1.2);
-  light.position.set(5, 10, 5);
-  scene.add(light);
-
-  let model;
-  let autoRotate = true;
-
-  const loader = new THREE.GLTFLoader();
-  loader.load(
-    "base.glb",
-    (gltf) => {
-      model = gltf.scene;
-      scene.add(model);
-
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-
-      model.position.sub(center);
-
-      const maxDim = Math.max(size.x, size.y, size.z);
-      camera.position.set(maxDim * 1.8, maxDim * 1.2, maxDim * 1.8);
-      controls.target.set(0, 0, 0);
-      controls.update();
-
-      document.getElementById("msg").style.display = "none";
-    },
-    undefined,
-    (err) => {
-      console.error(err);
-      document.getElementById("msg").textContent = "Failed to load model";
-    }
-  );
-
-  function resetView() {
-    controls.reset();
-  }
-
-  function toggleRotate() {
-    autoRotate = !autoRotate;
-  }
-
-  function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-    if (model && autoRotate) model.rotation.y += 0.005;
-    renderer.render(scene, camera);
-  }
-  animate();
-
-  window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-</script>
-
-</body>
+ 
+    // Lights 
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x222233, 1.0); 
+    scene.add(hemi); 
+ 
+    const dir = new THREE.DirectionalLight(0xffffff, 1.2); 
+    dir.position.set(3, 6, 4); 
+    scene.add(dir); 
+ 
+    // Ground
+    const groundGeo = new THREE.PlaneGeometry(50, 50); 
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 1.0, metalness: 0.0 }); 
+    const ground = new THREE.Mesh(groundGeo, groundMat); 
+    ground.rotation.x = -Math.PI / 2; 
+    ground.position.y = -0.001; 
+    scene.add(ground); 
+ 
+    // Load model using THREE.GLTFLoader
+    const loader = new THREE.GLTFLoader(); 
+    let modelRoot = null; 
+ 
+    loader.load( 
+      "base.glb", 
+      (gltf) => { 
+        modelRoot = gltf.scene; 
+        scene.add(modelRoot); 
+ 
+        // Center + frame model 
+        const box = new THREE.Box3().setFromObject(modelRoot); 
+        const size = box.getSize(new THREE.Vector3()); 
+        const center = box.getCenter(new THREE.Vector3()); 
+ 
+        modelRoot.position.x += (modelRoot.position.x - center.x); 
+        modelRoot.position.y += (modelRoot.position.y - center.y); 
+        modelRoot.position.z += (modelRoot.position.z - center.z); 
+ 
+        const maxDim = Math.max(size.x, size.y, size.z); 
+        cameraRadius = maxDim * 1.8; 
+        
+        camera.position.set(cameraRadius, cameraRadius * 0.75, cameraRadius); 
+        targetRotation.y = Math.atan2(camera.position.x, camera.position.z);
+        targetRotation.x = Math.asin(camera.position.y / cameraRadius);
+        rotation = { ...targetRotation };
+ 
+        msg.style.display = "none"; 
+      }, 
+      (xhr) => { 
+        if (xhr.total) { 
+          const pct = Math.round((xhr.loaded / xhr.total) * 100); 
+          msg.textContent = `Loading model… ${pct}%`; 
+        } 
+      }, 
+      (err) => { 
+        console.error('Load error:', err); 
+        msg.textContent = "Failed to load model. Error: " + err.message; 
+      } 
+    ); 
+ 
+    // UI 
+    let autoRotate = true; 
+    const btnRotate = document.getElementById("toggleRotate"); 
+    const btnReset = document.getElementById("reset"); 
+    const speed = document.getElementById("speed"); 
+ 
+    btnRotate.addEventListener("click", () => { 
+      autoRotate = !autoRotate; 
+      btnRotate.textContent = `Auto-rotate: ${autoRotate ? "ON" : "OFF"}`; 
+    }); 
+ 
+    btnReset.addEventListener("click", () => { 
+      if (modelRoot) {
+        const box = new THREE.Box3().setFromObject(modelRoot);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        cameraRadius = maxDim * 1.8;
+        targetRotation = { x: Math.PI / 6, y: Math.PI / 4 };
+      }
+    }); 
+ 
+    // Render loop 
+    const clock = new THREE.Clock(); 
+    function animate() { 
+      requestAnimationFrame(animate); 
+      updateCamera();
+ 
+      if (modelRoot && autoRotate && !isDragging) { 
+        const dt = clock.getDelta(); 
+        modelRoot.rotation.y += dt * parseFloat(speed.value); 
+      } 
+ 
+      renderer.render(scene, camera); 
+    } 
+    animate(); 
+ 
+    window.addEventListener("resize", () => { 
+      camera.aspect = window.innerWidth / window.innerHeight; 
+      camera.updateProjectionMatrix(); 
+      renderer.setSize(window.innerWidth, window.innerHeight); 
+    }); 
+  </script> 
+</body> 
 </html>
