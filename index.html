@@ -29,21 +29,44 @@
       color: #ddd; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
     canvas { display: block; }
+
+    /* Menu Styles */
+    #menuButton { position: fixed; top: 12px; right: 12px; z-index: 11; }
+    #menuPanel {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 12;
+      display: none; flex-direction: column; padding: 20px; overflow-y: auto;
+    }
+    #menuClose { align-self: flex-end; margin-bottom: 10px; }
+    #menuGrid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;
+    }
+    .menuTile {
+      background: #2b2b2b; border-radius: 8px; padding: 8px; cursor: pointer; text-align: center;
+    }
+    .menuTile img { width: 100%; height: auto; border-radius: 4px; object-fit: cover; aspect-ratio: 1/1; background: #1a1a1a; }
+    .menuTile span { display: block; margin-top: 4px; font-size: 12px; }
+    .menuTile:hover { background: #3a3a3a; }
+    .menuTile.selected { border: 2px solid #fff; }
   </style>
 </head>
 <body>
   <div id="ui">
     <h1>3D Model Viewer</h1>
     <div class="row">
-      <button id="prevModel">← Previous</button>
       <span id="modelCounter">Model 1 of 1</span>
-      <button id="nextModel">Next →</button>
     </div>
     <div class="row">
       <button id="reset">Reset View</button>
       <button id="toggleRotate">Auto-rotate: ON</button>
       <label>Speed <input id="speed" type="range" min="0" max="2" step="0.01" value="0.6"></label>
     </div>
+  </div>
+
+  <button id="menuButton">☰ Menu</button>
+
+  <div id="menuPanel">
+    <button id="menuClose">Close</button>
+    <div id="menuGrid"></div>
   </div>
 
   <div id="msg">Loading models…</div>
@@ -53,8 +76,13 @@
   <script>
     let MODEL_FILES = [];
     let currentModelIndex = 0;
+    let currentSound = null; // Current audio element
 
     const msg = document.getElementById("msg");
+    const menuPanel = document.getElementById("menuPanel");
+    const menuGrid = document.getElementById("menuGrid");
+    const menuButton = document.getElementById("menuButton");
+    const menuClose = document.getElementById("menuClose");
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x111111);
@@ -67,13 +95,16 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     document.body.appendChild(renderer.domElement);
 
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+
     // Basic orbit controls implementation
     let isDragging = false;
     let previousMousePosition = { x: 0, y: 0 };
     let rotation = { x: 0.3, y: 0.8 };
     let targetRotation = { x: 0.3, y: 0.8 };
     let cameraRadius = 5;
-    let cameraTarget = new THREE.Vector3(0, 0, 0); // Fixed point at origin
+    let cameraTarget = new THREE.Vector3(0, 0, 0);
 
     // Mouse controls
     renderer.domElement.addEventListener('mousedown', (e) => {
@@ -94,8 +125,9 @@
       }
     });
 
-    renderer.domElement.addEventListener('mouseup', () => {
+    renderer.domElement.addEventListener('mouseup', (e) => {
       isDragging = false;
+      handleClick(e); // Check for model click after drag ends
     });
 
     renderer.domElement.addEventListener('mouseleave', () => {
@@ -154,6 +186,9 @@
       e.preventDefault();
       isDragging = false;
       lastTouchDistance = 0;
+      if (e.changedTouches.length === 1) {
+        handleClick(e.changedTouches[0]); // Treat as click
+      }
     });
 
     function updateCamera() {
@@ -176,121 +211,178 @@
 
     // Model loading
     const loader = new THREE.GLTFLoader();
-    let pivot = null; // Use pivot for rotation instead of modelRoot
+    let pivot = null;
 
-    function loadModel(filename) {
+    async function loadModel(filename) {
       msg.style.display = 'grid';
       msg.textContent = 'Loading model…';
 
-      // Remove existing pivot and model
       if (pivot) {
         scene.remove(pivot);
         pivot = null;
       }
 
-      loader.load(
-        filename,
-        (gltf) => {
-          const modelRoot = gltf.scene;
+      try {
+        const gltf = await loader.loadAsync(filename);
+        const modelRoot = gltf.scene;
 
-          // Center the model at origin
-          const box = new THREE.Box3().setFromObject(modelRoot);
-          const center = box.getCenter(new THREE.Vector3());
-          const size = box.getSize(new THREE.Vector3());
+        const box = new THREE.Box3().setFromObject(modelRoot);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
 
-          // Shift model so its geometric center is at (0,0,0)
-          modelRoot.position.x = -center.x;
-          modelRoot.position.y = -center.y;
-          modelRoot.position.z = -center.z;
+        modelRoot.position.x = -center.x;
+        modelRoot.position.y = -center.y;
+        modelRoot.position.z = -center.z;
 
-          // Optional: raise so bottom sits on y=0 (uncomment if desired)
-          // modelRoot.position.y += size.y / 2;
+        // Optional: modelRoot.position.y += size.y / 2;
 
-          // Wrap in a pivot group at (0,0,0) for rotation around center
-          pivot = new THREE.Group();
-          pivot.add(modelRoot);
-          scene.add(pivot);
+        pivot = new THREE.Group();
+        pivot.add(modelRoot);
+        scene.add(pivot);
 
-          const maxDim = Math.max(size.x, size.y, size.z);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        cameraRadius = maxDim * 2.5;
+        targetRotation = { x: 0.3, y: 0.8 };
+        rotation = { x: 0.3, y: 0.8 };
 
-          // Reset camera for every model
-          cameraRadius = maxDim * 2.5;
-          targetRotation = { x: 0.3, y: 0.8 };
-          rotation = { x: 0.3, y: 0.8 };
+        // Load sound
+        loadSound(filename);
 
-          msg.style.display = "none";
-          updateModelCounter();
-        },
-        (xhr) => {
-          if (xhr.total) {
-            const pct = Math.round((xhr.loaded / xhr.total) * 100);
-            msg.textContent = `Loading model… ${pct}%`;
-          }
-        },
-        (err) => {
-          console.error('Load error:', err);
-          msg.textContent = `Failed to load ${filename}. Check that the file exists.`;
-        }
-      );
+        msg.style.display = "none";
+        updateModelCounter();
+        highlightSelectedTile();
+      } catch (err) {
+        console.error('Load error:', err);
+        msg.textContent = `Failed to load ${filename}.`;
+      }
+    }
+
+    function loadSound(modelFilename) {
+      if (currentSound) {
+        currentSound.pause();
+        currentSound = null;
+      }
+      const baseName = modelFilename.split('/').pop().replace('.glb', '');
+      const soundUrl = `sounds/${baseName}.mp3`;
+      currentSound = new Audio(soundUrl);
+      currentSound.preload = 'auto'; // Preload for quick play
+    }
+
+    function playSound() {
+      if (currentSound) {
+        currentSound.currentTime = 0; // Restart if already playing
+        currentSound.play().catch(err => console.error('Sound play error:', err));
+      }
+    }
+
+    function handleClick(event) {
+      // Normalize pointer position
+      pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+      pointer.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(pointer, camera);
+
+      const intersects = raycaster.intersectObjects(scene.children, true);
+
+      if (intersects.length > 0 && intersects[0].object.isMesh) { // Hit a mesh in the model
+        playSound();
+      }
     }
 
     function updateModelCounter() {
       document.getElementById('modelCounter').textContent =
-        `Model ${currentModelIndex + 1} of ${MODEL_FILES.length}`;
-      document.getElementById('prevModel').disabled = currentModelIndex === 0;
-      document.getElementById('nextModel').disabled = currentModelIndex === MODEL_FILES.length - 1 || MODEL_FILES.length === 0;
+        `${getDisplayName(MODEL_FILES[currentModelIndex])} (${currentModelIndex + 1} of ${MODEL_FILES.length})`;
     }
 
-    // Dynamically fetch list of .glb files from GitHub repo
+    function getDisplayName(filename) {
+      const name = filename.split('/').pop().replace('.glb', '');
+      return name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function getThumbnailUrl(glbFilename) {
+      const baseName = glbFilename.split('/').pop().replace('.glb', '');
+      return `models/thumbnails/${baseName}.jpg`;
+    }
+
+    // Fetch model list from /models/
     async function init() {
       msg.textContent = 'Fetching model list…';
       try {
-        const response = await fetch('https://api.github.com/repos/pneumatic-steel/3D-viewer/contents/');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        const response = await fetch('https://api.github.com/repos/pneumatic-steel/3D-viewer/contents/models');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
+
         MODEL_FILES = data
-          .filter(item => item.type === 'file' && item.name.endsWith('.glb'))
-          .map(item => item.name)
-          .sort((a, b) => a.localeCompare(b)); // Sort alphabetically for consistent order
+          .filter(item => item.type === 'file' && item.name.toLowerCase().endsWith('.glb'))
+          .map(item => `models/${item.name}`)
+          .sort((a, b) => a.localeCompare(b));
 
         if (MODEL_FILES.length === 0) {
-          msg.textContent = 'No .glb models found in the repository.';
+          msg.textContent = 'No .glb models found in /models/.';
           msg.style.display = 'grid';
           return;
         }
 
+        buildMenu();
         currentModelIndex = 0;
-        loadModel(MODEL_FILES[currentModelIndex]);
+        await loadModel(MODEL_FILES[currentModelIndex]);
       } catch (error) {
-        console.error('Error fetching model list:', error);
-        msg.textContent = 'Failed to fetch model list. Check console for details.';
-        msg.style.display = 'grid';
+        console.error(error);
+        msg.textContent = 'Failed to fetch model list.';
       }
     }
 
-    // UI
+    // Build the thumbnail menu
+    function buildMenu() {
+      menuGrid.innerHTML = '';
+      MODEL_FILES.forEach((filename, index) => {
+        const tile = document.createElement('div');
+        tile.className = 'menuTile';
+        if (index === currentModelIndex) tile.classList.add('selected');
+
+        const img = document.createElement('img');
+        img.src = getThumbnailUrl(filename);
+        img.onerror = () => { img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='; }; // fallback
+        img.alt = getDisplayName(filename);
+
+        const span = document.createElement('span');
+        span.textContent = getDisplayName(filename);
+
+        tile.appendChild(img);
+        tile.appendChild(span);
+
+        tile.addEventListener('click', async () => {
+          currentModelIndex = index;
+          await loadModel(filename);
+          menuPanel.style.display = 'none';
+        });
+
+        menuGrid.appendChild(tile);
+      });
+    }
+
+    function highlightSelectedTile() {
+      document.querySelectorAll('.menuTile').forEach((tile, i) => {
+        tile.classList.toggle('selected', i === currentModelIndex);
+      });
+      updateModelCounter();
+    }
+
+    // Menu controls
+    menuButton.addEventListener('click', () => {
+      menuPanel.style.display = 'flex';
+      buildMenu();
+    });
+
+    menuClose.addEventListener('click', () => {
+      menuPanel.style.display = 'none';
+    });
+
+    // Other UI
     let autoRotate = true;
     const btnRotate = document.getElementById("toggleRotate");
     const btnReset = document.getElementById("reset");
     const speed = document.getElementById("speed");
-    const btnPrev = document.getElementById("prevModel");
-    const btnNext = document.getElementById("nextModel");
-
-    btnPrev.addEventListener("click", () => {
-      if (currentModelIndex > 0) {
-        currentModelIndex--;
-        loadModel(MODEL_FILES[currentModelIndex]);
-      }
-    });
-
-    btnNext.addEventListener("click", () => {
-      if (currentModelIndex < MODEL_FILES.length - 1) {
-        currentModelIndex++;
-        loadModel(MODEL_FILES[currentModelIndex]);
-      }
-    });
 
     btnRotate.addEventListener("click", () => {
       autoRotate = !autoRotate;
@@ -329,7 +421,6 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // Start by fetching the model list
     init();
   </script>
 </body>
