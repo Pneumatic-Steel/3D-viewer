@@ -79,7 +79,7 @@
     let rotation = { x: 0.3, y: 0.8 };
     let targetRotation = { x: 0.3, y: 0.8 };
     let cameraRadius = 5;
-    let cameraTarget = new THREE.Vector3(0, 0.5, 0);
+    let cameraTarget = new THREE.Vector3(0, 0, 0); // Fixed point at origin
     
     // Mouse controls
     renderer.domElement.addEventListener('mousedown', (e) => {
@@ -201,28 +201,27 @@
           modelRoot = gltf.scene; 
           scene.add(modelRoot); 
    
-          // Center + frame model 
+          // Center model at origin, sitting on the ground
           const box = new THREE.Box3().setFromObject(modelRoot); 
           const size = box.getSize(new THREE.Vector3()); 
           const center = box.getCenter(new THREE.Vector3()); 
    
-          modelRoot.position.x += (modelRoot.position.x - center.x); 
-          modelRoot.position.y += (modelRoot.position.y - center.y); 
-          modelRoot.position.z += (modelRoot.position.z - center.z); 
+          // Position so the bottom of the model is at y=0
+          modelRoot.position.x = -center.x; 
+          modelRoot.position.y = -box.min.y; 
+          modelRoot.position.z = -center.z; 
    
           const maxDim = Math.max(size.x, size.y, size.z);
           
-          // Only set camera distance for the very first model loaded
+          // Only set initial camera for first model
           if (isFirstModel) {
             cameraRadius = maxDim * 2.5;
             camera.position.set(cameraRadius, cameraRadius * 0.75, cameraRadius); 
             targetRotation.y = Math.atan2(camera.position.x, camera.position.z);
             targetRotation.x = Math.asin(camera.position.y / cameraRadius);
             rotation = { ...targetRotation };
-            cameraTarget.set(0, 0, 0);
             isFirstModel = false;
           }
-          // For all other models, don't touch camera or target at all
    
           msg.style.display = "none";
           updateModelCounter();
