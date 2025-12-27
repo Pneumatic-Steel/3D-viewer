@@ -30,6 +30,7 @@
     }
     canvas { display: block; position: absolute; top: 0; left: 0; z-index: 2; }
 
+    /* Menu Styles */
     #menuButton { position: fixed; top: 12px; right: 12px; z-index: 11; }
     #menuPanel {
       position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 12;
@@ -43,6 +44,7 @@
       background: none; border-radius: 8px; padding: 0; cursor: pointer; text-align: center;
     }
     .menuTile img { width: 100%; height: auto; border-radius: 8px; object-fit: contain; background: #1a1a1a; }
+    .menuTile:hover img { filter: brightness(1.1); }
     .menuTile.selected img { box-shadow: 0 0 0 2px #fff; }
   </style>
 </head>
@@ -101,11 +103,8 @@
     let cameraRadius = 5;
     let cameraTarget = new THREE.Vector3(0, 0, 0);
 
-    renderer.domElement.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      previousMousePosition = { x: e.clientX, y: e.clientY };
-    });
-
+    // Mouse Controls
+    renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; previousMousePosition = { x: e.clientX, y: e.clientY }; });
     renderer.domElement.addEventListener('mousemove', (e) => {
       if (isDragging) {
         const deltaX = e.clientX - previousMousePosition.x;
@@ -116,17 +115,8 @@
         previousMousePosition = { x: e.clientX, y: e.clientY };
       }
     });
-
-    renderer.domElement.addEventListener('mouseup', (e) => {
-      isDragging = false;
-      handleClick(e); 
-    });
-
-    renderer.domElement.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      cameraRadius += e.deltaY * 0.01;
-      cameraRadius = Math.max(0.5, Math.min(100, cameraRadius));
-    });
+    renderer.domElement.addEventListener('mouseup', (e) => { isDragging = false; handleClick(e); });
+    renderer.domElement.addEventListener('wheel', (e) => { e.preventDefault(); cameraRadius += e.deltaY * 0.01; cameraRadius = Math.max(0.5, Math.min(100, cameraRadius)); });
 
     function updateCamera() {
       rotation.x += (targetRotation.x - rotation.x) * 0.1;
@@ -146,6 +136,7 @@
     const loader = new THREE.GLTFLoader();
     let pivot = null;
 
+    // RESTORED: GLB Model Loading with Sound
     async function loadModel(filename) {
       msg.style.display = 'grid';
       msg.textContent = 'Loading model…';
@@ -162,19 +153,15 @@
         pivot = new THREE.Group();
         pivot.add(modelRoot);
         scene.add(pivot);
-        const maxDim = Math.max(size.x, size.y, size.z);
-        cameraRadius = maxDim * 2.5;
-        targetRotation = { x: 0.3, y: 0.8 };
-        rotation = { x: 0.3, y: 0.8 };
+        cameraRadius = Math.max(size.x, size.y, size.z) * 2.5;
         loadSound(filename);
         msg.style.display = "none";
         updateModelCounter();
         highlightSelectedTile();
-      } catch (err) {
-        msg.textContent = `Failed to load ${filename}.`;
-      }
+      } catch (err) { msg.textContent = `Failed to load ${filename}.`; }
     }
 
+    // RESTORED: Card Logic with Aspect Ratio
     async function loadCard(filename) {
       msg.style.display = 'grid';
       msg.textContent = 'Loading card…';
@@ -193,45 +180,29 @@
         const cardWidth = 1;
         const cardHeight = cardWidth / aspect;
 
-        // FIXED: Added transparency and alphaTest to remove white corners
+        // FIX: Remove White Corners using alphaTest
+        const matOptions = { side: THREE.FrontSide, transparent: true, alphaTest: 0.5 };
+        
         const frontGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
-        const frontMaterial = new THREE.MeshBasicMaterial({ 
-          map: frontTexture, 
-          side: THREE.FrontSide, 
-          transparent: true, 
-          alphaTest: 0.05 
-        });
+        const frontMaterial = new THREE.MeshBasicMaterial({ map: frontTexture, ...matOptions });
         const frontMesh = new THREE.Mesh(frontGeometry, frontMaterial);
 
         const backGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
-        const backMaterial = new THREE.MeshBasicMaterial({ 
-          map: backTexture, 
-          side: THREE.FrontSide, 
-          transparent: true,
-          alphaTest: 0.05
-        });
+        const backMaterial = new THREE.MeshBasicMaterial({ map: backTexture, ...matOptions });
         const backMesh = new THREE.Mesh(backGeometry, backMaterial);
         backMesh.rotation.y = Math.PI;
-        // Added tiny offset to prevent front/back flickering
-        backMesh.position.z = -0.001; 
 
         pivot = new THREE.Group();
         pivot.add(frontMesh);
         pivot.add(backMesh);
         scene.add(pivot);
 
-        const maxDim = Math.max(cardWidth, cardHeight);
-        cameraRadius = maxDim * 2.5;
-        targetRotation = { x: 0.3, y: 0.8 };
-        rotation = { x: 0.3, y: 0.8 };
-
+        cameraRadius = Math.max(cardWidth, cardHeight) * 2.5;
         if (currentSound) { currentSound.pause(); currentSound = null; }
         msg.style.display = "none";
         updateModelCounter();
         highlightSelectedTile();
-      } catch (err) {
-        msg.textContent = `Failed to load card.`;
-      }
+      } catch (err) { msg.textContent = `Failed to load card.`; }
     }
 
     async function loadCurrent() {
@@ -239,6 +210,7 @@
       showModel ? await loadModel(filename) : await loadCard(filename);
     }
 
+    // RESTORED: Sound Logic
     function loadSound(modelFilename) {
       if (currentSound) { currentSound.pause(); currentSound = null; }
       const baseName = modelFilename.split('/').pop().replace('.glb', '');
@@ -246,12 +218,7 @@
       currentSound.preload = 'auto';
     }
 
-    function playSound() {
-      if (currentSound) {
-        currentSound.currentTime = 0;
-        currentSound.play().catch(err => console.error(err));
-      }
-    }
+    function playSound() { if (currentSound) { currentSound.currentTime = 0; currentSound.play().catch(err => {}); } }
 
     function handleClick(event) {
       if (!showModel) return;
@@ -259,9 +226,7 @@
       pointer.y = - (event.clientY / window.innerHeight) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
       const intersects = raycaster.intersectObjects(scene.children, true);
-      if (intersects.length > 0 && intersects[0].object.isMesh) {
-        playSound();
-      }
+      if (intersects.length > 0 && intersects[0].object.isMesh) playSound();
     }
 
     function updateModelCounter() {
@@ -270,13 +235,11 @@
     }
 
     function getDisplayName(filename) {
-      const name = filename.split('/').pop().replace('.glb', '');
-      return name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      return filename.split('/').pop().replace('.glb', '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
 
     function getThumbnailUrl(glbFilename) {
-      const baseName = glbFilename.split('/').pop().replace('.glb', '');
-      return `models/thumbnails/${baseName}.jpg`;
+      return `models/thumbnails/${glbFilename.split('/').pop().replace('.glb', '')}.jpg`;
     }
 
     async function init() {
@@ -289,9 +252,7 @@
           .sort((a, b) => a.localeCompare(b));
         buildMenu();
         await loadCurrent();
-      } catch (error) {
-        msg.textContent = 'Failed to fetch model list.';
-      }
+      } catch (error) { msg.textContent = 'Failed to fetch model list.'; }
     }
 
     function buildMenu() {
@@ -302,13 +263,8 @@
         if (index === currentModelIndex) tile.classList.add('selected');
         const img = document.createElement('img');
         img.src = getThumbnailUrl(filename);
-        img.alt = getDisplayName(filename);
         tile.appendChild(img);
-        tile.addEventListener('click', async () => {
-          currentModelIndex = index;
-          await loadCurrent();
-          menuPanel.style.display = 'none';
-        });
+        tile.onclick = async () => { currentModelIndex = index; await loadCurrent(); menuPanel.style.display = 'none'; };
         menuGrid.appendChild(tile);
       });
     }
@@ -318,50 +274,27 @@
       updateModelCounter();
     }
 
-    menuButton.addEventListener('click', () => { menuPanel.style.display = 'flex'; buildMenu(); });
-    menuClose.addEventListener('click', () => { menuPanel.style.display = 'none'; });
+    menuButton.onclick = () => { menuPanel.style.display = 'flex'; buildMenu(); };
+    menuClose.onclick = () => { menuPanel.style.display = 'none'; };
 
     let autoRotate = false;
     const btnRotate = document.getElementById("toggleRotate");
-    const btnReset = document.getElementById("reset");
-    const btnToggleModel = document.getElementById("toggleModel");
     const speed = document.getElementById("speed");
 
-    btnRotate.addEventListener("click", () => {
-      autoRotate = !autoRotate;
-      btnRotate.textContent = `Auto-rotate: ${autoRotate ? "ON" : "OFF"}`;
-    });
-
-    btnReset.addEventListener("click", () => {
-      if (pivot) {
-        targetRotation = { x: 0.3, y: 0.8 };
-        rotation = { x: 0.3, y: 0.8 };
-      }
-    });
-
-    btnToggleModel.addEventListener("click", () => {
-      showModel = !showModel;
-      btnToggleModel.textContent = showModel ? "Hide Model" : "Show Model";
-      loadCurrent();
-    });
+    btnRotate.onclick = () => { autoRotate = !autoRotate; btnRotate.textContent = `Auto-rotate: ${autoRotate ? "ON" : "OFF"}`; };
+    document.getElementById("reset").onclick = () => { targetRotation = { x: 0.3, y: 0.8 }; rotation = { x: 0.3, y: 0.8 }; };
+    document.getElementById("toggleModel").onclick = () => { showModel = !showModel; document.getElementById("toggleModel").textContent = showModel ? "Hide Model" : "Show Model"; loadCurrent(); };
 
     const clock = new THREE.Clock();
     function animate() {
       requestAnimationFrame(animate);
       updateCamera();
-      if (pivot && autoRotate && !isDragging) {
-        pivot.rotation.y += clock.getDelta() * parseFloat(speed.value);
-      }
+      if (pivot && autoRotate && !isDragging) pivot.rotation.y += clock.getDelta() * parseFloat(speed.value);
       renderer.render(scene, camera);
     }
     animate();
 
-    window.addEventListener("resize", () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
+    window.onresize = () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
     init();
   </script>
 </body>
