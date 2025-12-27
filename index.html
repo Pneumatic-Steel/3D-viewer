@@ -63,12 +63,10 @@
   </div>
 
   <button id="menuButton">☰ Menu</button>
-
   <div id="menuPanel">
     <button id="menuClose">Close</button>
     <div id="menuGrid"></div>
   </div>
-
   <div id="msg">Loading models…</div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -173,32 +171,34 @@
           textureLoader.loadAsync(backUrl)
         ]);
 
-        const aspect = frontTex.image.width / frontTex.image.height;
-        const w = 3.0; // Larger card size
-        const h = w / aspect;
+        // Fallback aspect if image data isn't ready
+        let aspect = 733 / 1024;
+        if (frontTex.image && frontTex.image.height > 0) {
+          aspect = frontTex.image.width / frontTex.image.height;
+        }
 
+        const w = 2.5; 
+        const h = w / aspect;
         const geo = new THREE.PlaneGeometry(w, h);
 
-        // Front Face
         const frontMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: frontTex, side: THREE.FrontSide }));
-        
-        // Back Face - Slapped together like glue
         const backMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: backTex, side: THREE.FrontSide }));
-        backMesh.rotation.y = Math.PI; // Flip it to face the other way
-        backMesh.position.z = -0.001; // Tiny gap to prevent flickering
+        
+        backMesh.rotation.y = Math.PI; 
+        backMesh.position.z = -0.01; // Slapped together
 
         pivot = new THREE.Group();
         pivot.add(frontMesh);
         pivot.add(backMesh);
         scene.add(pivot);
 
-        cameraRadius = h * 1.5;
-        targetRotation = { x: 0, y: 0 };
+        cameraRadius = h * 1.8;
+        targetRotation = { x: 0.3, y: 0.8 };
         
         msg.style.display = "none";
         updateModelCounter();
         highlightSelectedTile();
-      } catch (err) { msg.textContent = 'Error loading card images.'; }
+      } catch (err) { msg.textContent = 'Error loading images.'; }
     }
 
     async function loadCurrent() {
@@ -268,13 +268,9 @@
     const btnRotate = document.getElementById("toggleRotate");
     const speed = document.getElementById("speed");
 
-    btnRotate.onclick = () => { autoRotate = !autoRotate; btnRotate.textContent = `Auto-rotate: ${autoRotate ? \"ON\" : \"OFF\"}`; };
+    btnRotate.onclick = () => { autoRotate = !autoRotate; btnRotate.textContent = `Auto-rotate: ${autoRotate ? "ON" : "OFF"}`; };
     document.getElementById("reset").onclick = () => { targetRotation = { x: 0.3, y: 0.8 }; };
-    document.getElementById("toggleModel").onclick = () => { 
-      showModel = !showModel; 
-      document.getElementById("toggleModel").textContent = showModel ? "Hide Model" : "Show Model"; 
-      loadCurrent(); 
-    };
+    document.getElementById("toggleModel").onclick = () => { showModel = !showModel; document.getElementById("toggleModel").textContent = showModel ? "Hide Model" : "Show Model"; loadCurrent(); };
 
     const clock = new THREE.Clock();
     function animate() {
