@@ -40,7 +40,9 @@
     #menuGrid {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;
     }
-    .menuTile { background: none; border-radius: 8px; padding: 0; cursor: pointer; text-align: center; }
+    .menuTile {
+      background: none; border-radius: 8px; padding: 0; cursor: pointer; text-align: center;
+    }
     .menuTile img { width: 100%; height: auto; border-radius: 8px; object-fit: contain; background: #1a1a1a; }
     .menuTile:hover img { filter: brightness(1.1); }
     .menuTile.selected img { box-shadow: 0 0 0 2px #fff; }
@@ -101,7 +103,6 @@
     let cameraRadius = 5;
     let cameraTarget = new THREE.Vector3(0, 0, 0);
 
-    // Controls
     renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; previousMousePosition = { x: e.clientX, y: e.clientY }; });
     renderer.domElement.addEventListener('mousemove', (e) => {
       if (isDragging) {
@@ -135,7 +136,8 @@
     let pivot = null;
 
     async function loadModel(filename) {
-      msg.style.display = 'grid'; msg.textContent = 'Loading model…';
+      msg.style.display = 'grid';
+      msg.textContent = 'Loading model…';
       if (pivot) { scene.remove(pivot); pivot = null; }
       try {
         const gltf = await loader.loadAsync(filename);
@@ -148,7 +150,7 @@
         pivot.add(modelRoot);
         scene.add(pivot);
         cameraRadius = Math.max(size.x, size.y, size.z) * 2.5;
-        loadSound(filename); // Sounds restored
+        loadSound(filename);
         msg.style.display = "none";
         updateModelCounter();
         highlightSelectedTile();
@@ -156,8 +158,10 @@
     }
 
     async function loadCard(filename) {
-      msg.style.display = 'grid'; msg.textContent = 'Cropping card…';
+      msg.style.display = 'grid';
+      msg.textContent = 'Loading card…';
       if (pivot) { scene.remove(pivot); pivot = null; }
+
       const frontUrl = getThumbnailUrl(filename);
       const backUrl = 'models/thumbnails/cardbacking.png';
 
@@ -167,42 +171,34 @@
           textureLoader.loadAsync(backUrl)
         ]);
 
-        // Fix 1: Read actual cropped dimensions
-        const aspect = frontTex.image.width / frontTex.image.height;
-        const h = 3.5; 
-        const w = h * aspect;
-        const geo = new THREE.PlaneGeometry(w, h);
+        const imgW = frontTex.image.width;
+        const imgH = frontTex.image.height;
+        const aspect = imgW / imgH;
 
-        // Fix 2: Remove White Corners using alphaTest
-        const matSettings = { side: THREE.FrontSide, transparent: true, alphaTest: 0.5 };
-        
-        const frontMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: frontTex, ...matSettings }));
-        const backMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: backTex, ...matSettings }));
-        
-        // Fix 3: Center-Crop the backing to match the front's shape
-        const backAspect = backTex.image.width / backTex.image.height;
-        if (aspect < backAspect) {
-          backTex.repeat.set(aspect / backAspect, 1);
-          backTex.offset.set((1 - (aspect / backAspect)) / 2, 0);
-        } else {
-          backTex.repeat.set(1, backAspect / aspect);
-          backTex.offset.set(0, (1 - (backAspect / aspect)) / 2);
-        }
+        const meshH = 3.5;
+        const meshW = meshH * aspect;
+        const geo = new THREE.PlaneGeometry(meshW, meshH);
 
+        const frontMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: frontTex, side: THREE.FrontSide, transparent: true }));
+        const backMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: backTex, side: THREE.FrontSide, transparent: true }));
+        
         backMesh.rotation.y = Math.PI; 
         backMesh.position.z = -0.001; 
 
         pivot = new THREE.Group();
-        pivot.add(frontMesh); pivot.add(backMesh);
+        pivot.add(frontMesh);
+        pivot.add(backMesh);
         scene.add(pivot);
 
-        cameraRadius = h * 1.8;
+        cameraRadius = meshH * 1.8;
         targetRotation = { x: 0.3, y: 0.8 };
+        
         if (currentSound) { currentSound.pause(); currentSound = null; }
+
         msg.style.display = "none";
         updateModelCounter();
         highlightSelectedTile();
-      } catch (err) { msg.textContent = 'Error loading card images.'; }
+      } catch (err) { msg.textContent = 'Error loading images.'; }
     }
 
     async function loadCurrent() {
@@ -244,7 +240,7 @@
         MODEL_FILES = data.filter(i => i.name.toLowerCase().endsWith('.glb')).map(i => `models/${i.name}`).sort();
         buildMenu();
         await loadCurrent();
-      } catch (e) { msg.textContent = 'GitHub access failed.'; }
+      } catch (e) { msg.textContent = 'Load failed.'; }
     }
 
     function buildMenu() {
@@ -275,7 +271,11 @@
 
     btnRotate.onclick = () => { autoRotate = !autoRotate; btnRotate.textContent = `Auto-rotate: ${autoRotate ? "ON" : "OFF"}`; };
     document.getElementById("reset").onclick = () => { targetRotation = { x: 0.3, y: 0.8 }; };
-    document.getElementById("toggleModel").onclick = () => { showModel = !showModel; document.getElementById("toggleModel").textContent = showModel ? "Hide Model" : "Show Model"; loadCurrent(); };
+    document.getElementById("toggleModel").onclick = () => { 
+      showModel = !showModel; 
+      document.getElementById("toggleModel").textContent = showModel ? "Hide Model" : "Show Model"; 
+      loadCurrent(); 
+    };
 
     const clock = new THREE.Clock();
     function animate() {
