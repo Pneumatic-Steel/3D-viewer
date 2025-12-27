@@ -186,25 +186,26 @@
           textureLoader.loadAsync(backUrl)
         ]);
 
+        // 1. DYNAMIC SIZE: Use image data to get correct aspect ratio
         const aspect = frontTexture.image.width / frontTexture.image.height;
-        const cardWidth = 1.5; // Slightly larger base size
+        const cardWidth = 2.0; // Increased base size so it's not "too small"
         const cardHeight = cardWidth / aspect;
 
-        // Ultra-thin for a real card feel
-        const geometry = new THREE.BoxGeometry(cardWidth, cardHeight, 0.005);
+        // 2. GEOMETRY: Ultra-thin physical box
+        const geometry = new THREE.BoxGeometry(cardWidth, cardHeight, 0.01);
         
-        // Fix Orientation: Only flip horizontally, keep Y upright
-        backTexture.center.set(0.5, 0.5);
-        backTexture.repeat.set(-1, 1); // Flip horizontally without rotating upside down
+        // 3. TEXTURE FIX: Mirror horizontally so text isn't backwards, but keep Y upright
+        backTexture.wrapS = THREE.RepeatWrapping;
+        backTexture.repeat.set(-1, 1);
         backTexture.offset.set(1, 0);
 
         const materials = [
-          new THREE.MeshBasicMaterial({ color: 0x111111 }), // sides
-          new THREE.MeshBasicMaterial({ color: 0x111111 }),
-          new THREE.MeshBasicMaterial({ color: 0x111111 }),
-          new THREE.MeshBasicMaterial({ color: 0x111111 }),
-          new THREE.MeshBasicMaterial({ map: frontTexture }),
-          new THREE.MeshBasicMaterial({ map: backTexture })
+          new THREE.MeshBasicMaterial({ color: 0x000000 }), // side
+          new THREE.MeshBasicMaterial({ color: 0x000000 }), // side
+          new THREE.MeshBasicMaterial({ color: 0x000000 }), // side
+          new THREE.MeshBasicMaterial({ color: 0x000000 }), // side
+          new THREE.MeshBasicMaterial({ map: frontTexture }), // FRONT (Index 4)
+          new THREE.MeshBasicMaterial({ map: backTexture })  // BACK (Index 5)
         ];
 
         const cardMesh = new THREE.Mesh(geometry, materials);
@@ -212,7 +213,8 @@
         pivot.add(cardMesh);
         scene.add(pivot);
 
-        cameraRadius = cardHeight * 1.8; // Focus closer
+        // 4. CAMERA: Focus tightly on the new card
+        cameraRadius = cardHeight * 1.5; 
         targetRotation = { x: 0.2, y: 0.5 };
         
         msg.style.display = "none";
@@ -290,7 +292,11 @@
 
     btnRotate.onclick = () => { autoRotate = !autoRotate; btnRotate.textContent = `Auto-rotate: ${autoRotate ? "ON" : "OFF"}`; };
     document.getElementById("reset").onclick = () => { targetRotation = { x: 0.3, y: 0.8 }; };
-    document.getElementById("toggleModel").onclick = () => { showModel = !showModel; document.getElementById("toggleModel").textContent = showModel ? "Hide Model" : "Show Model"; loadCurrent(); };
+    document.getElementById("toggleModel").onclick = () => { 
+      showModel = !showModel; 
+      document.getElementById("toggleModel").textContent = showModel ? "Hide Model" : "Show Model"; 
+      loadCurrent(); 
+    };
 
     const clock = new THREE.Clock();
     function animate() {
