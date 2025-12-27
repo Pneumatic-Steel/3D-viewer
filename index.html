@@ -136,7 +136,6 @@
     const loader = new THREE.GLTFLoader();
     let pivot = null;
 
-    // RESTORED: GLB Model Loading with Sound
     async function loadModel(filename) {
       msg.style.display = 'grid';
       msg.textContent = 'Loading model…';
@@ -161,7 +160,6 @@
       } catch (err) { msg.textContent = `Failed to load ${filename}.`; }
     }
 
-    // RESTORED: Card Logic with Aspect Ratio
     async function loadCard(filename) {
       msg.style.display = 'grid';
       msg.textContent = 'Loading card…';
@@ -179,22 +177,37 @@
         const aspect = frontTexture.image.width / frontTexture.image.height;
         const cardWidth = 1;
         const cardHeight = cardWidth / aspect;
-
-        // FIX: Remove White Corners using alphaTest
-        const matOptions = { side: THREE.FrontSide, transparent: true, alphaTest: 0.5 };
         
+        // --- CUSTOMIZE CARD HERE ---
+        const thickness = 0.02;     // How thick the card is
+        const edgeColor = 0xeeeeee; // Color of the card edges (0xeeeeee is light grey/white)
+        // ---------------------------
+
+        const matOptions = { transparent: true, alphaTest: 0.5 };
+        pivot = new THREE.Group();
+
+        // 1. FRONT PLANE
         const frontGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
         const frontMaterial = new THREE.MeshBasicMaterial({ map: frontTexture, ...matOptions });
         const frontMesh = new THREE.Mesh(frontGeometry, frontMaterial);
+        frontMesh.position.z = thickness / 2;
+        pivot.add(frontMesh);
 
+        // 2. BACK PLANE
         const backGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
         const backMaterial = new THREE.MeshBasicMaterial({ map: backTexture, ...matOptions });
         const backMesh = new THREE.Mesh(backGeometry, backMaterial);
         backMesh.rotation.y = Math.PI;
-
-        pivot = new THREE.Group();
-        pivot.add(frontMesh);
+        backMesh.position.z = -thickness / 2;
         pivot.add(backMesh);
+
+        // 3. INTERNAL CORE (The "Edge")
+        // We shrink it by 1% (0.99) so it doesn't poke through the front/back images
+        const edgeGeom = new THREE.BoxGeometry(cardWidth * 0.99, cardHeight * 0.99, thickness * 0.98);
+        const edgeMat = new THREE.MeshBasicMaterial({ color: edgeColor });
+        const edgeMesh = new THREE.Mesh(edgeGeom, edgeMat);
+        pivot.add(edgeMesh);
+
         scene.add(pivot);
 
         cameraRadius = Math.max(cardWidth, cardHeight) * 2.5;
@@ -210,7 +223,6 @@
       showModel ? await loadModel(filename) : await loadCard(filename);
     }
 
-    // RESTORED: Sound Logic
     function loadSound(modelFilename) {
       if (currentSound) { currentSound.pause(); currentSound = null; }
       const baseName = modelFilename.split('/').pop().replace('.glb', '');
@@ -299,5 +311,3 @@
   </script>
 </body>
 </html>
-
-
