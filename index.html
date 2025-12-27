@@ -63,12 +63,10 @@
   </div>
 
   <button id="menuButton">☰ Menu</button>
-
   <div id="menuPanel">
     <button id="menuClose">Close</button>
     <div id="menuGrid"></div>
   </div>
-
   <div id="msg">Loading models…</div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -94,9 +92,10 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     document.body.appendChild(renderer.domElement);
 
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
     const textureLoader = new THREE.TextureLoader();
 
-    // Orbit State
     let isDragging = false;
     let previousMousePosition = { x: 0, y: 0 };
     let rotation = { x: 0.3, y: 0.8 };
@@ -104,7 +103,6 @@
     let cameraRadius = 5;
     let cameraTarget = new THREE.Vector3(0, 0, 0);
 
-    // Controls
     renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; previousMousePosition = { x: e.clientX, y: e.clientY }; });
     renderer.domElement.addEventListener('mousemove', (e) => {
       if (isDragging) {
@@ -116,7 +114,7 @@
         previousMousePosition = { x: e.clientX, y: e.clientY };
       }
     });
-    renderer.domElement.addEventListener('mouseup', () => isDragging = false);
+    renderer.domElement.addEventListener('mouseup', (e) => { isDragging = false; handleClick(e); });
     renderer.domElement.addEventListener('wheel', (e) => { e.preventDefault(); cameraRadius += e.deltaY * 0.01; cameraRadius = Math.max(0.5, Math.min(100, cameraRadius)); });
 
     function updateCamera() {
@@ -152,15 +150,16 @@
         pivot.add(modelRoot);
         scene.add(pivot);
         cameraRadius = Math.max(size.x, size.y, size.z) * 2.5;
+        loadSound(filename);
         msg.style.display = "none";
         updateModelCounter();
         highlightSelectedTile();
-      } catch (err) { msg.textContent = 'Failed to load model.'; }
+      } catch (err) { msg.textContent = 'Error loading model.'; }
     }
 
     async function loadCard(filename) {
       msg.style.display = 'grid';
-      msg.textContent = 'Glueing card…';
+      msg.textContent = 'Loading card…';
       if (pivot) { scene.remove(pivot); pivot = null; }
 
       const frontUrl = getThumbnailUrl(filename);
@@ -172,40 +171,57 @@
           textureLoader.loadAsync(backUrl)
         ]);
 
-        // 1. READ THE EXACT PIXELS (Fixes the 271x858 issue)
         const imgW = frontTex.image.width;
         const imgH = frontTex.image.height;
         const aspect = imgW / imgH;
 
-        // 2. BUILD THE PLANE TO MATCH YOUR CROPPED ART
-        const cardH = 3.5;
-        const cardW = cardH * aspect;
-        const geo = new THREE.PlaneGeometry(cardW, cardH);
+        const meshH = 3.5;
+        const meshW = meshH * aspect;
+        const geo = new THREE.PlaneGeometry(meshW, meshH);
 
-        // 3. SLAP FRONT AND BACK TOGETHER (IDENTICAL SIZE)
         const frontMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: frontTex, side: THREE.FrontSide, transparent: true }));
         const backMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: backTex, side: THREE.FrontSide, transparent: true }));
         
         backMesh.rotation.y = Math.PI; 
-        backMesh.position.z = -0.001; // The Glue Gap
+        backMesh.position.z = -0.001; 
 
         pivot = new THREE.Group();
         pivot.add(frontMesh);
         pivot.add(backMesh);
         scene.add(pivot);
 
-        cameraRadius = cardH * 1.8;
-        targetRotation = { x: 0, y: 0 };
+        cameraRadius = meshH * 1.8;
+        targetRotation = { x: 0.3, y: 0.8 };
         
+        if (currentSound) { currentSound.pause(); currentSound = null; }
+
         msg.style.display = "none";
         updateModelCounter();
         highlightSelectedTile();
-      } catch (err) { msg.textContent = 'Error: Transparency issue.'; }
+      } catch (err) { msg.textContent = 'Error loading images.'; }
     }
 
     async function loadCurrent() {
       const filename = MODEL_FILES[currentModelIndex];
       showModel ? await loadModel(filename) : await loadCard(filename);
+    }
+
+    function loadSound(modelFilename) {
+      if (currentSound) { currentSound.pause(); currentSound = null; }
+      const baseName = modelFilename.split('/').pop().replace('.glb', '');
+      currentSound = new Audio(`sounds/${baseName}.mp3`);
+      currentSound.preload = 'auto';
+    }
+
+    function playSound() { if (currentSound) { currentSound.currentTime = 0; currentSound.play().catch(() => {}); } }
+
+    function handleClick(event) {
+      if (!showModel) return;
+      pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+      pointer.y = - (event.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const intersects = raycaster.intersectObjects(scene.children, true);
+      if (intersects.length > 0) playSound();
     }
 
     function updateModelCounter() {
@@ -221,7 +237,7 @@
       try {
         const res = await fetch('https://api.github.com/repos/pneumatic-steel/3D-viewer/contents/models');
         const data = await res.json();
-        MODEL_FILES = data.filter(i => i.name.endsWith('.glb')).map(i => `models/${i.name}`).sort();
+        MODEL_FILES = data.filter(i => i.name.toLowerCase().endsWith('.glb')).map(i => `models/${i.name}`).sort();
         buildMenu();
         await loadCurrent();
       } catch (e) { msg.textContent = 'Load failed.'; }
