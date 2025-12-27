@@ -30,7 +30,6 @@
     }
     canvas { display: block; position: absolute; top: 0; left: 0; z-index: 2; }
 
-    /* Menu Styles */
     #menuButton { position: fixed; top: 12px; right: 12px; z-index: 11; }
     #menuPanel {
       position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 12;
@@ -44,7 +43,6 @@
       background: none; border-radius: 8px; padding: 0; cursor: pointer; text-align: center;
     }
     .menuTile img { width: 100%; height: auto; border-radius: 8px; object-fit: contain; background: #1a1a1a; }
-    .menuTile:hover img { filter: brightness(1.1); }
     .menuTile.selected img { box-shadow: 0 0 0 2px #fff; }
   </style>
 </head>
@@ -103,7 +101,11 @@
     let cameraRadius = 5;
     let cameraTarget = new THREE.Vector3(0, 0, 0);
 
-    renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; previousMousePosition = { x: e.clientX, y: e.clientY }; });
+    renderer.domElement.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      previousMousePosition = { x: e.clientX, y: e.clientY };
+    });
+
     renderer.domElement.addEventListener('mousemove', (e) => {
       if (isDragging) {
         const deltaX = e.clientX - previousMousePosition.x;
@@ -114,8 +116,17 @@
         previousMousePosition = { x: e.clientX, y: e.clientY };
       }
     });
-    renderer.domElement.addEventListener('mouseup', (e) => { isDragging = false; handleClick(e); });
-    renderer.domElement.addEventListener('wheel', (e) => { e.preventDefault(); cameraRadius += e.deltaY * 0.01; cameraRadius = Math.max(0.5, Math.min(100, cameraRadius)); });
+
+    renderer.domElement.addEventListener('mouseup', (e) => {
+      isDragging = false;
+      handleClick(e); 
+    });
+
+    renderer.domElement.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      cameraRadius += e.deltaY * 0.01;
+      cameraRadius = Math.max(0.5, Math.min(100, cameraRadius));
+    });
 
     function updateCamera() {
       rotation.x += (targetRotation.x - rotation.x) * 0.1;
@@ -145,16 +156,23 @@
         const box = new THREE.Box3().setFromObject(modelRoot);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
-        modelRoot.position.sub(center);
+        modelRoot.position.x = -center.x;
+        modelRoot.position.y = -center.y;
+        modelRoot.position.z = -center.z;
         pivot = new THREE.Group();
         pivot.add(modelRoot);
         scene.add(pivot);
-        cameraRadius = Math.max(size.x, size.y, size.z) * 2.5;
+        const maxDim = Math.max(size.x, size.y, size.z);
+        cameraRadius = maxDim * 2.5;
+        targetRotation = { x: 0.3, y: 0.8 };
+        rotation = { x: 0.3, y: 0.8 };
         loadSound(filename);
         msg.style.display = "none";
         updateModelCounter();
         highlightSelectedTile();
-      } catch (err) { msg.textContent = 'Error loading model.'; }
+      } catch (err) {
+        msg.textContent = `Failed to load ${filename}.`;
+      }
     }
 
     async function loadCard(filename) {
@@ -166,23 +184,35 @@
       const backUrl = 'models/thumbnails/cardbacking.png';
 
       try {
-        const [frontTex, backTex] = await Promise.all([
+        const [frontTexture, backTexture] = await Promise.all([
           textureLoader.loadAsync(frontUrl),
           textureLoader.loadAsync(backUrl)
         ]);
 
-        const imgW = frontTex.image.width;
-        const imgH = frontTex.image.height;
-        const aspect = imgW / imgH;
+        const aspect = frontTexture.image.width / frontTexture.image.height;
+        const cardWidth = 1;
+        const cardHeight = cardWidth / aspect;
 
-        const meshH = 3.5;
-        const meshW = meshH * aspect;
-        const geo = new THREE.PlaneGeometry(meshW, meshH);
+        // FIXED: Added transparency and alphaTest to remove white corners
+        const frontGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
+        const frontMaterial = new THREE.MeshBasicMaterial({ 
+          map: frontTexture, 
+          side: THREE.FrontSide, 
+          transparent: true, 
+          alphaTest: 0.05 
+        });
+        const frontMesh = new THREE.Mesh(frontGeometry, frontMaterial);
 
-        const frontMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: frontTex, side: THREE.FrontSide, transparent: true }));
-        const backMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: backTex, side: THREE.FrontSide, transparent: true }));
-        
-        backMesh.rotation.y = Math.PI; 
+        const backGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
+        const backMaterial = new THREE.MeshBasicMaterial({ 
+          map: backTexture, 
+          side: THREE.FrontSide, 
+          transparent: true,
+          alphaTest: 0.05
+        });
+        const backMesh = new THREE.Mesh(backGeometry, backMaterial);
+        backMesh.rotation.y = Math.PI;
+        // Added tiny offset to prevent front/back flickering
         backMesh.position.z = -0.001; 
 
         pivot = new THREE.Group();
@@ -190,15 +220,18 @@
         pivot.add(backMesh);
         scene.add(pivot);
 
-        cameraRadius = meshH * 1.8;
+        const maxDim = Math.max(cardWidth, cardHeight);
+        cameraRadius = maxDim * 2.5;
         targetRotation = { x: 0.3, y: 0.8 };
-        
-        if (currentSound) { currentSound.pause(); currentSound = null; }
+        rotation = { x: 0.3, y: 0.8 };
 
+        if (currentSound) { currentSound.pause(); currentSound = null; }
         msg.style.display = "none";
         updateModelCounter();
         highlightSelectedTile();
-      } catch (err) { msg.textContent = 'Error loading images.'; }
+      } catch (err) {
+        msg.textContent = `Failed to load card.`;
+      }
     }
 
     async function loadCurrent() {
@@ -213,7 +246,12 @@
       currentSound.preload = 'auto';
     }
 
-    function playSound() { if (currentSound) { currentSound.currentTime = 0; currentSound.play().catch(() => {}); } }
+    function playSound() {
+      if (currentSound) {
+        currentSound.currentTime = 0;
+        currentSound.play().catch(err => console.error(err));
+      }
+    }
 
     function handleClick(event) {
       if (!showModel) return;
@@ -221,71 +259,109 @@
       pointer.y = - (event.clientY / window.innerHeight) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
       const intersects = raycaster.intersectObjects(scene.children, true);
-      if (intersects.length > 0) playSound();
+      if (intersects.length > 0 && intersects[0].object.isMesh) {
+        playSound();
+      }
     }
 
     function updateModelCounter() {
-      const filename = MODEL_FILES[currentModelIndex];
-      document.getElementById('modelCounter').textContent = 
-        `${getDisplayName(filename)} (${currentModelIndex + 1} of ${MODEL_FILES.length})`;
+      document.getElementById('modelCounter').textContent =
+        `${getDisplayName(MODEL_FILES[currentModelIndex])} (${currentModelIndex + 1} of ${MODEL_FILES.length})`;
     }
 
-    function getDisplayName(f) { return f.split('/').pop().replace('.glb', '').replace(/[-_]/g, ' ').toUpperCase(); }
-    function getThumbnailUrl(f) { return `models/thumbnails/${f.split('/').pop().replace('.glb', '')}.jpg`; }
+    function getDisplayName(filename) {
+      const name = filename.split('/').pop().replace('.glb', '');
+      return name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function getThumbnailUrl(glbFilename) {
+      const baseName = glbFilename.split('/').pop().replace('.glb', '');
+      return `models/thumbnails/${baseName}.jpg`;
+    }
 
     async function init() {
       try {
-        const res = await fetch('https://api.github.com/repos/pneumatic-steel/3D-viewer/contents/models');
-        const data = await res.json();
-        MODEL_FILES = data.filter(i => i.name.toLowerCase().endsWith('.glb')).map(i => `models/${i.name}`).sort();
+        const response = await fetch('https://api.github.com/repos/pneumatic-steel/3D-viewer/contents/models');
+        const data = await response.json();
+        MODEL_FILES = data
+          .filter(item => item.type === 'file' && item.name.toLowerCase().endsWith('.glb'))
+          .map(item => `models/${item.name}`)
+          .sort((a, b) => a.localeCompare(b));
         buildMenu();
         await loadCurrent();
-      } catch (e) { msg.textContent = 'Load failed.'; }
+      } catch (error) {
+        msg.textContent = 'Failed to fetch model list.';
+      }
     }
 
     function buildMenu() {
       menuGrid.innerHTML = '';
-      MODEL_FILES.forEach((f, i) => {
+      MODEL_FILES.forEach((filename, index) => {
         const tile = document.createElement('div');
         tile.className = 'menuTile';
-        if (i === currentModelIndex) tile.classList.add('selected');
+        if (index === currentModelIndex) tile.classList.add('selected');
         const img = document.createElement('img');
-        img.src = getThumbnailUrl(f);
+        img.src = getThumbnailUrl(filename);
+        img.alt = getDisplayName(filename);
         tile.appendChild(img);
-        tile.onclick = async () => { currentModelIndex = i; await loadCurrent(); menuPanel.style.display = 'none'; };
+        tile.addEventListener('click', async () => {
+          currentModelIndex = index;
+          await loadCurrent();
+          menuPanel.style.display = 'none';
+        });
         menuGrid.appendChild(tile);
       });
     }
 
     function highlightSelectedTile() {
-      document.querySelectorAll('.menuTile').forEach((t, i) => t.classList.toggle('selected', i === currentModelIndex));
+      document.querySelectorAll('.menuTile').forEach((tile, i) => tile.classList.toggle('selected', i === currentModelIndex));
       updateModelCounter();
     }
 
-    menuButton.onclick = () => { menuPanel.style.display = 'flex'; buildMenu(); };
-    menuClose.onclick = () => { menuPanel.style.display = 'none'; };
+    menuButton.addEventListener('click', () => { menuPanel.style.display = 'flex'; buildMenu(); });
+    menuClose.addEventListener('click', () => { menuPanel.style.display = 'none'; });
 
     let autoRotate = false;
     const btnRotate = document.getElementById("toggleRotate");
+    const btnReset = document.getElementById("reset");
+    const btnToggleModel = document.getElementById("toggleModel");
     const speed = document.getElementById("speed");
 
-    btnRotate.onclick = () => { autoRotate = !autoRotate; btnRotate.textContent = `Auto-rotate: ${autoRotate ? "ON" : "OFF"}`; };
-    document.getElementById("reset").onclick = () => { targetRotation = { x: 0.3, y: 0.8 }; };
-    document.getElementById("toggleModel").onclick = () => { 
-      showModel = !showModel; 
-      document.getElementById("toggleModel").textContent = showModel ? "Hide Model" : "Show Model"; 
-      loadCurrent(); 
-    };
+    btnRotate.addEventListener("click", () => {
+      autoRotate = !autoRotate;
+      btnRotate.textContent = `Auto-rotate: ${autoRotate ? "ON" : "OFF"}`;
+    });
+
+    btnReset.addEventListener("click", () => {
+      if (pivot) {
+        targetRotation = { x: 0.3, y: 0.8 };
+        rotation = { x: 0.3, y: 0.8 };
+      }
+    });
+
+    btnToggleModel.addEventListener("click", () => {
+      showModel = !showModel;
+      btnToggleModel.textContent = showModel ? "Hide Model" : "Show Model";
+      loadCurrent();
+    });
 
     const clock = new THREE.Clock();
     function animate() {
       requestAnimationFrame(animate);
       updateCamera();
-      if (pivot && autoRotate && !isDragging) pivot.rotation.y += clock.getDelta() * parseFloat(speed.value);
+      if (pivot && autoRotate && !isDragging) {
+        pivot.rotation.y += clock.getDelta() * parseFloat(speed.value);
+      }
       renderer.render(scene, camera);
     }
     animate();
-    window.onresize = () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
     init();
   </script>
 </body>
