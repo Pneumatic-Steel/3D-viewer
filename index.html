@@ -105,7 +105,6 @@
     let cameraRadius = 5;
     let cameraTarget = new THREE.Vector3(0, 0, 0);
 
-    // Mouse and Touch events (kept from original for functionality)
     renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; previousMousePosition = { x: e.clientX, y: e.clientY }; });
     renderer.domElement.addEventListener('mousemove', (e) => {
       if (isDragging) {
@@ -142,7 +141,6 @@
       msg.style.display = 'grid';
       msg.textContent = 'Loading model…';
       if (pivot) { scene.remove(pivot); pivot = null; }
-
       try {
         const gltf = await loader.loadAsync(filename);
         const modelRoot = gltf.scene;
@@ -175,21 +173,19 @@
           textureLoader.loadAsync(backUrl)
         ]);
 
-        // Get aspect ratio from the front image
         const aspect = frontTex.image.width / frontTex.image.height;
-        const w = 2.5; 
+        const w = 3.0; // Larger card size
         const h = w / aspect;
 
-        // Create one geometry used by BOTH front and back
         const geo = new THREE.PlaneGeometry(w, h);
 
-        // Front Mesh
+        // Front Face
         const frontMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: frontTex, side: THREE.FrontSide }));
         
-        // Back Mesh - Same geometry, flipped 180 and pushed back a tiny bit (slapped together)
+        // Back Face - Slapped together like glue
         const backMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: backTex, side: THREE.FrontSide }));
-        backMesh.rotation.y = Math.PI;
-        backMesh.position.z = -0.01; // The "glue" gap
+        backMesh.rotation.y = Math.PI; // Flip it to face the other way
+        backMesh.position.z = -0.001; // Tiny gap to prevent flickering
 
         pivot = new THREE.Group();
         pivot.add(frontMesh);
@@ -272,7 +268,7 @@
     const btnRotate = document.getElementById("toggleRotate");
     const speed = document.getElementById("speed");
 
-    btnRotate.onclick = () => { autoRotate = !autoRotate; btnRotate.textContent = `Auto-rotate: ${autoRotate ? "ON" : "OFF"}`; };
+    btnRotate.onclick = () => { autoRotate = !autoRotate; btnRotate.textContent = `Auto-rotate: ${autoRotate ? \"ON\" : \"OFF\"}`; };
     document.getElementById("reset").onclick = () => { targetRotation = { x: 0.3, y: 0.8 }; };
     document.getElementById("toggleModel").onclick = () => { 
       showModel = !showModel; 
