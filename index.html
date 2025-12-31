@@ -42,40 +42,43 @@
             width: 600px;
             display: none;
             z-index: 20;
+            pointer-events: none; /* allows clicks to pass through */
         }
         #pokedex-open-img {
             width: 100%;
-            pointer-events: none; /* allows clicks to pass through the image itself */
         }
         #thumbnail-container {
             position: absolute;
-            top: 15.5%;     /* aligned to the left screen area */
-            left: 12.5%;
-            width: 200px;
-            height: 200px;
+            top: 12%; /* fine-tuned to align with left screen */
+            left: 10%;
+            width: 28%; /* approximate proportion of left screen */
+            height: 32%;
             overflow: hidden;
+            border-radius: 4px; /* slight screen curve */
             pointer-events: none;
-            border-radius: 8px;
         }
         #thumbnail {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            object-position: center top; /* focuses on the Pokémon artwork */
+            object-position: center top; /* focuses on Pokémon artwork */
         }
         /* D-pad clickable areas (invisible) */
         .dpad-left, .dpad-right {
             position: absolute;
-            bottom: 21%;
-            width: 50px;
-            height: 60px;
+            bottom: 18%; /* fine-tuned to D-pad position */
+            width: 6%; /* approximate D-pad arm size */
+            height: 10%;
             cursor: pointer;
-            z-index: 30;
             pointer-events: all; /* enable clicks */
+            z-index: 30;
         }
-        .dpad-left  { left: 17%; }
-        .dpad-right { left: 25%; }
-
+        .dpad-left {
+            left: 18%;
+        }
+        .dpad-right {
+            left: 24%;
+        }
         #controls {
             position: absolute;
             bottom: 20px;
@@ -96,19 +99,19 @@
         <!-- Closed Pokédex - menu button (upper right) -->
         <img id="menu-button" src="thumbnails/pokedex.png" alt="Menu">
 
-        <!-- Open Pokédex - overlay -->
+        <!-- Open Pokédex - overlay with nested elements for proper alignment -->
         <div id="pokedex-open">
             <img id="pokedex-open-img" src="thumbnails/pokedex_open.png" alt="Open Pokedex">
-        </div>
 
-        <!-- Thumbnail cropped into left screen -->
-        <div id="thumbnail-container">
-            <img id="thumbnail" src="" alt="Model Thumbnail">
-        </div>
+            <!-- Thumbnail cropped into left screen -->
+            <div id="thumbnail-container">
+                <img id="thumbnail" src="" alt="Model Thumbnail">
+            </div>
 
-        <!-- D-pad left/right clickable zones -->
-        <div class="dpad-left"  onclick="switchModel(-1)"></div>
-        <div class="dpad-right" onclick="switchModel(1)"></div>
+            <!-- D-pad left/right clickable zones -->
+            <div class="dpad-left" onclick="switchModel(-1)"></div>
+            <div class="dpad-right" onclick="switchModel(1)"></div>
+        </div>
     </div>
 
     <div id="controls">
@@ -128,7 +131,6 @@
 
         const menuButton       = document.getElementById('menu-button');
         const pokedexOpen      = document.getElementById('pokedex-open');
-        const thumbnailCont    = document.getElementById('thumbnail-container');
         const thumbnailImg     = document.getElementById('thumbnail');
         const modelInfo        = document.getElementById('model-info');
 
@@ -136,8 +138,6 @@
         menuButton.addEventListener('click', () => {
             const isOpen = pokedexOpen.style.display === 'block';
             pokedexOpen.style.display = isOpen ? 'none' : 'block';
-            thumbnailCont.style.display = isOpen ? 'none' : 'block';
-
             if (!isOpen) {
                 updateThumbnail();
             }
@@ -159,7 +159,7 @@
             thumbnailImg.src = models[currentModel].thumbnail;
         }
 
-        // Optional: load first thumbnail on start if you want
+        // Optional: load first thumbnail on start (but since menu is closed, not needed)
         // updateThumbnail();
     </script>
 </body>
