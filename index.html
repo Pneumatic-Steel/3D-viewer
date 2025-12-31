@@ -6,20 +6,20 @@
   <title>3D Model Viewer</title>
   <style>
     :root {
-      /* Thumbnail container adjustments */
-      --thumbnail-top: 18%;
-      --thumbnail-left: 12%;
-      --thumbnail-width: 28%;
-      --thumbnail-height: 29%;
-      --thumbnail-object-fit: cover;
-      --thumbnail-object-position: center top;
+      /* Adjust these values to position and size the thumbnail image inside the left screen of pokedex_open.png */
+      --thumbnail-top: 18%;     /* Move up/down */
+      --thumbnail-left: 12%;    /* Move left/right */
+      --thumbnail-width: 28%;   /* Adjust width to fit the screen */
+      --thumbnail-height: 29%;  /* Adjust height to fit the screen */
+      --thumbnail-object-fit: cover;  /* 'cover' to crop and fill, 'contain' to fit without cropping */
+      --thumbnail-object-position: center center;  /* Adjust positioning within the container, e.g., 'center top' */
 
-      /* D-pad adjustments */
-      --dpad-bottom: 21%;
-      --dpad-width: 6%;
-      --dpad-height: 10%;
-      --dpad-left-position: 16%;
-      --dpad-right-position: 22%;
+      /* Adjust these values to position and size the left and right D-pad buttons over the + shape */
+      --dpad-bottom: 21%;       /* Move up/down from bottom */
+      --dpad-width: 6%;         /* Adjust button width */
+      --dpad-height: 10%;       /* Adjust button height */
+      --dpad-left-position: 16%;  /* Position for left button */
+      --dpad-right-position: 22%; /* Position for right button */
     }
 
     html, body { height: 100%; margin: 0; overflow: hidden; position: relative; background-color: #111; background-image: url('pokemonBackground.gif'); background-size: cover; background-position: center; background-repeat: no-repeat; }
