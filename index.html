@@ -42,7 +42,10 @@
             width: 600px;
             display: none;
             z-index: 20;
-            pointer-events: none; /* allows clicks to pass through to overlays */
+        }
+        #pokedex-open-img {
+            width: 100%;
+            pointer-events: none; /* allows clicks to pass through the image itself */
         }
         #thumbnail-container {
             position: absolute;
@@ -52,7 +55,7 @@
             height: 200px;
             overflow: hidden;
             pointer-events: none;
-            border-radius: 8px; /* slight rounding to match screen */
+            border-radius: 8px;
         }
         #thumbnail {
             width: 100%;
@@ -94,7 +97,9 @@
         <img id="menu-button" src="thumbnails/pokedex.png" alt="Menu">
 
         <!-- Open Pokédex - overlay -->
-        <img id="pokedex-open" src="thumbnails/pokedex_open.png" alt="Open Pokedex">
+        <div id="pokedex-open">
+            <img id="pokedex-open-img" src="thumbnails/pokedex_open.png" alt="Open Pokedex">
+        </div>
 
         <!-- Thumbnail cropped into left screen -->
         <div id="thumbnail-container">
@@ -126,16 +131,12 @@
         const thumbnailCont    = document.getElementById('thumbnail-container');
         const thumbnailImg     = document.getElementById('thumbnail');
         const modelInfo        = document.getElementById('model-info');
-        const dpadLeft         = document.querySelector('.dpad-left');
-        const dpadRight        = document.querySelector('.dpad-right');
 
         // Toggle menu open/close
         menuButton.addEventListener('click', () => {
             const isOpen = pokedexOpen.style.display === 'block';
             pokedexOpen.style.display = isOpen ? 'none' : 'block';
             thumbnailCont.style.display = isOpen ? 'none' : 'block';
-            dpadLeft.style.pointerEvents = isOpen ? 'none' : 'all';
-            dpadRight.style.pointerEvents = isOpen ? 'none' : 'all';
 
             if (!isOpen) {
                 updateThumbnail();
@@ -158,7 +159,7 @@
             thumbnailImg.src = models[currentModel].thumbnail;
         }
 
-        // Optional: start with first thumbnail when page loads (if menu opens automatically)
+        // Optional: load first thumbnail on start if you want
         // updateThumbnail();
     </script>
 </body>
