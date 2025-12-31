@@ -7,9 +7,10 @@
     <style>
         body {
             margin: 0;
-            background: #000; /* Dark background for viewer */
+            background: #000;
             font-family: Arial, sans-serif;
             color: #fff;
+            overflow: hidden;
         }
         #viewer {
             width: 100vw;
@@ -18,16 +19,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #222; /* Placeholder for 3D canvas */
+            background: #222;
         }
         #menu-button {
             position: absolute;
             top: 20px;
             right: 20px;
-            width: 100px; /* Fairly small, adjust as needed */
+            width: 100px; /* fairly small but visible */
             cursor: pointer;
             z-index: 10;
-            transition: transform 0.3s;
+            transition: transform 0.2s;
         }
         #menu-button:hover {
             transform: scale(1.1);
@@ -37,127 +38,128 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            max-width: 80%; /* Responsive scaling */
-            width: 600px; /* Expanded size, adjust based on your image */
+            max-width: 90%;
+            width: 600px;
             display: none;
             z-index: 20;
+            pointer-events: none; /* allows clicks to pass through to overlays */
         }
         #thumbnail-container {
             position: absolute;
-            top: 15%; /* Adjust to align with left screen in pokedex_open.png */
-            left: 12%; /* Position over the left transparent square */
-            width: 200px; /* Approximate size of left screen */
+            top: 15.5%;     /* aligned to the left screen area */
+            left: 12.5%;
+            width: 200px;
             height: 200px;
             overflow: hidden;
-            pointer-events: none; /* Don't block clicks */
+            pointer-events: none;
+            border-radius: 8px; /* slight rounding to match screen */
         }
         #thumbnail {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Crops to fit, focusing on key area */
-            object-position: center top; /* Crops to top (Pokémon artwork) for card-style thumbnails */
+            object-fit: cover;
+            object-position: center top; /* focuses on the Pokémon artwork */
         }
-        /* Clickable areas for D-pad (left/right). Positions based on image analysis */
+        /* D-pad clickable areas (invisible) */
         .dpad-left, .dpad-right {
             position: absolute;
-            bottom: 20%; /* Adjust to D-pad position */
+            bottom: 21%;
             width: 50px;
-            height: 50px;
+            height: 60px;
             cursor: pointer;
             z-index: 30;
+            pointer-events: all; /* enable clicks */
         }
-        .dpad-left {
-            left: 18%; /* Left arm of D-pad cross */
-        }
-        .dpad-right {
-            left: 25%; /* Right arm of D-pad cross */
-        }
-        /* Placeholder controls text */
+        .dpad-left  { left: 17%; }
+        .dpad-right { left: 25%; }
+
         #controls {
             position: absolute;
             bottom: 20px;
             left: 20px;
             z-index: 10;
-        }
-        @media (max-width: 768px) {
-            #pokedex-open {
-                width: 400px;
-            }
-            #thumbnail-container {
-                width: 130px;
-                height: 130px;
-            }
-            #menu-button {
-                width: 80px;
-            }
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
     <div id="viewer">
-        <!-- Placeholder for 3D model viewer (integrate Three.js here) -->
-        <div>3D Model Viewer - Loading models... (Model 1 of 3)</div>
-        
-        <!-- Closed Pokedex as menu button -->
-        <img id="menu-button" src="path/to/pokedex.png" alt="Menu">
-        
-        <!-- Open Pokedex -->
-        <img id="pokedex-open" src="path/to/pokedex_open.png" alt="Open Pokedex">
-        
-        <!-- Thumbnail overlay on left screen -->
+        <!-- Your 3D viewer canvas goes here (Three.js, etc.) -->
+        <div style="text-align:center; font-size:20px;">
+            3D Model Viewer<br>
+            <span id="model-info">Model 1 of X</span>
+        </div>
+
+        <!-- Closed Pokédex - menu button (upper right) -->
+        <img id="menu-button" src="thumbnails/pokedex.png" alt="Menu">
+
+        <!-- Open Pokédex - overlay -->
+        <img id="pokedex-open" src="thumbnails/pokedex_open.png" alt="Open Pokedex">
+
+        <!-- Thumbnail cropped into left screen -->
         <div id="thumbnail-container">
             <img id="thumbnail" src="" alt="Model Thumbnail">
         </div>
-        
-        <!-- Clickable D-pad areas (invisible overlays) -->
-        <div class="dpad-left" onclick="switchModel(-1)"></div>
+
+        <!-- D-pad left/right clickable zones -->
+        <div class="dpad-left"  onclick="switchModel(-1)"></div>
         <div class="dpad-right" onclick="switchModel(1)"></div>
     </div>
-    
-    <!-- Controls text -->
+
     <div id="controls">
         Reset View | Auto-rotate: OFF | Hide Model | Speed
     </div>
 
     <script>
-        // Example model thumbnails (replace with your actual paths/URLs)
+        // List all your card thumbnails here (add as many as you have)
         const models = [
-            { thumbnail: 'path/to/venusaur-card.png' }, // Your provided example
-            { thumbnail: 'path/to/charizard-card.png' },
-            { thumbnail: 'path/to/blastoise-card.png' }
+            { thumbnail: 'thumbnails/venusaur.png' },     // replace with your actual filenames
+            { thumbnail: 'thumbnails/charizard.png' },
+            { thumbnail: 'thumbnails/blastoise.png' },
+            // add more...
         ];
+
         let currentModel = 0;
 
-        // Toggle open/close
-        const menuButton = document.getElementById('menu-button');
-        const pokedexOpen = document.getElementById('pokedex-open');
-        const thumbnailContainer = document.getElementById('thumbnail-container');
-        const dpadLeft = document.querySelector('.dpad-left');
-        const dpadRight = document.querySelector('.dpad-right');
+        const menuButton       = document.getElementById('menu-button');
+        const pokedexOpen      = document.getElementById('pokedex-open');
+        const thumbnailCont    = document.getElementById('thumbnail-container');
+        const thumbnailImg     = document.getElementById('thumbnail');
+        const modelInfo        = document.getElementById('model-info');
+        const dpadLeft         = document.querySelector('.dpad-left');
+        const dpadRight        = document.querySelector('.dpad-right');
 
+        // Toggle menu open/close
         menuButton.addEventListener('click', () => {
             const isOpen = pokedexOpen.style.display === 'block';
             pokedexOpen.style.display = isOpen ? 'none' : 'block';
-            thumbnailContainer.style.display = isOpen ? 'none' : 'block';
-            dpadLeft.style.display = isOpen ? 'none' : 'block';
-            dpadRight.style.display = isOpen ? 'none' : 'block';
-            if (!isOpen) updateThumbnail();
+            thumbnailCont.style.display = isOpen ? 'none' : 'block';
+            dpadLeft.style.pointerEvents = isOpen ? 'none' : 'all';
+            dpadRight.style.pointerEvents = isOpen ? 'none' : 'all';
+
+            if (!isOpen) {
+                updateThumbnail();
+            }
         });
 
-        // Switch models with D-pad
+        // Switch models
         window.switchModel = (direction) => {
             currentModel = (currentModel + direction + models.length) % models.length;
             updateThumbnail();
-            // Here: Load actual 3D model (e.g., call Three.js function)
-            console.log(`Loading model ${currentModel + 1}`);
-            // Update viewer text
-            document.querySelector('#viewer div').textContent = `3D Model Viewer - Loading models... (Model ${currentModel + 1} of ${models.length})`;
+
+            // UPDATE YOUR 3D MODEL LOADER HERE
+            console.log(`Load 3D model for index ${currentModel}`);
+            // Example: loadModel(models[currentModel].gltfPath);
+
+            modelInfo.textContent = `Model ${currentModel + 1} of ${models.length}`;
         };
 
-        // Update thumbnail in left screen
         function updateThumbnail() {
-            document.getElementById('thumbnail').src = models[currentModel].thumbnail;
+            thumbnailImg.src = models[currentModel].thumbnail;
         }
+
+        // Optional: start with first thumbnail when page loads (if menu opens automatically)
+        // updateThumbnail();
     </script>
 </body>
 </html>
