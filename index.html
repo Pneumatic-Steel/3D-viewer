@@ -5,6 +5,23 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>3D Model Viewer</title>
   <style>
+    :root {
+      /* Thumbnail container adjustments */
+      --thumbnail-top: 18%;
+      --thumbnail-left: 12%;
+      --thumbnail-width: 28%;
+      --thumbnail-height: 29%;
+      --thumbnail-object-fit: cover;
+      --thumbnail-object-position: center top;
+
+      /* D-pad adjustments */
+      --dpad-bottom: 21%;
+      --dpad-width: 6%;
+      --dpad-height: 10%;
+      --dpad-left-position: 16%;
+      --dpad-right-position: 22%;
+    }
+
     html, body { height: 100%; margin: 0; overflow: hidden; position: relative; background-color: #111; background-image: url('pokemonBackground.gif'); background-size: cover; background-position: center; background-repeat: no-repeat; }
     #ui {
       position: fixed; left: 12px; top: 12px; z-index: 10;
@@ -44,20 +61,18 @@
     }
     #pokedex-open-img { width: 100%; pointer-events: none; }
     #thumbnail-container {
-      /* Adjust these percentages to fine-tune the thumbnail alignment with the left screen */
-      position: absolute; top: 18%; left: 12%; width: 28%; height: 29%;
+      position: absolute; top: var(--thumbnail-top); left: var(--thumbnail-left); width: var(--thumbnail-width); height: var(--thumbnail-height);
       overflow: hidden; pointer-events: none; border-radius: 4px; z-index: 25;
     }
     #thumbnail {
-      width: 100%; height: 100%; object-fit: cover; object-position: center center;
+      width: 100%; height: 100%; object-fit: var(--thumbnail-object-fit); object-position: var(--thumbnail-object-position);
     }
     .dpad-left, .dpad-right {
-      /* Adjust these percentages to fine-tune the D-pad button alignment with the + shape */
-      position: absolute; bottom: 21%; width: 6%; height: 10%;
+      position: absolute; bottom: var(--dpad-bottom); width: var(--dpad-width); height: var(--dpad-height);
       cursor: pointer; z-index: 30;
     }
-    .dpad-left { left: 16%; }
-    .dpad-right { left: 22%; }
+    .dpad-left { left: var(--dpad-left-position); }
+    .dpad-right { left: var(--dpad-right-position); }
   </style>
 </head>
 <body>
