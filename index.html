@@ -42,7 +42,7 @@
       max-width: 90%;
       width: 600px;
     }
-    #pokedex-open-img { width: 100%; }
+    #pokedex-open-img { width: 100%; pointer-events: none; }
     #thumbnail-container {
       position: absolute; top: 15%; left: 10%; width: 28%; height: 32%;
       overflow: hidden; pointer-events: none; border-radius: 4px;
@@ -313,7 +313,7 @@
     }
 
     function getThumbnailUrl(glbFilename) {
-      return `models/thumbnails/${glbFilename.split('/').pop().replace('.glb', '')}.png`;
+      return `models/thumbnails/${glbFilename.split('/').pop().replace('.glb', '')}.jpg`;
     }
 
     async function init() {
