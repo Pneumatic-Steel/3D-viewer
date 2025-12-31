@@ -44,18 +44,18 @@
     }
     #pokedex-open-img { width: 100%; pointer-events: none; }
     #thumbnail-container {
-      position: absolute; top: 15%; left: 10%; width: 28%; height: 32%;
-      overflow: hidden; pointer-events: none; border-radius: 4px;
+      position: absolute; top: 12%; left: 8%; width: 30%; height: 35%;
+      overflow: hidden; pointer-events: none; border-radius: 4px; z-index: 25;
     }
     #thumbnail {
       width: 100%; height: 100%; object-fit: cover; object-position: center top;
     }
     .dpad-left, .dpad-right {
-      position: absolute; bottom: 20%; width: 5%; height: 8%;
+      position: absolute; bottom: 18%; width: 6%; height: 10%;
       cursor: pointer; z-index: 30;
     }
-    .dpad-left { left: 18%; }
-    .dpad-right { left: 24%; }
+    .dpad-left { left: 16%; }
+    .dpad-right { left: 22%; }
   </style>
 </head>
 <body>
@@ -276,7 +276,7 @@
         if (currentSound) { currentSound.pause(); currentSound = null; }
         msg.style.display = "none";
         updateModelCounter();
-      } catch (err) { msg.textContent = `Failed to load card.`; console.error(err); }
+      } catch (err) { msg.textContent = `Failed to load card: ${err.message}`; console.error(err); }
     }
 
     async function loadCurrent() {
@@ -367,7 +367,7 @@
     }
     animate();
 
-    window.onresize = () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
+    window.onresize = () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrixMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
     init();
   </script>
 </body>
