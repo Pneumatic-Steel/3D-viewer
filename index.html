@@ -7,19 +7,19 @@
   <style>
     :root {
       /* Adjust these values to position and size the thumbnail image inside the left screen of pokedex_open.png */
-      --thumbnail-top: 20%;     /* Move up/down */
-      --thumbnail-left: 9%;    /* Move left/right */
-      --thumbnail-width: 42%;   /* Adjust width to fit the screen */
-      --thumbnail-height: 47%;  /* Adjust height to fit the screen */
+      --thumbnail-top: 17%;     /* Move up/down */
+      --thumbnail-left: 8%;     /* Move left/right */
+      --thumbnail-width: 31%;   /* Adjust width to fit the screen */
+      --thumbnail-height: 36%;  /* Adjust height to fit the screen */
       --thumbnail-object-fit: cover;  /* 'cover' to crop and fill, 'contain' to fit without cropping */
-      --thumbnail-object-position: center top;  /* Adjust positioning within the container, e.g., 'center top' */
+      --thumbnail-object-position: center center;  /* Adjust positioning within the container, e.g., 'center top' */
 
-      /* Adjust these values to position and size the left and right D-pad buttons over the + shape */
-      --dpad-bottom: 18%;       /* Move up/down from bottom */
-      --dpad-width: 6%;         /* Adjust button width */
-      --dpad-height: 10%;       /* Adjust button height */
-      --dpad-left-position: 34%;  /* Position for left button */
-      --dpad-right-position: 38%; /* Position for right button */
+      /* Adjust these values to position and size the left and right navigation buttons over the < > icons */
+      --dpad-bottom: 20%;       /* Move up/down from bottom */
+      --dpad-width: 4%;         /* Adjust button width */
+      --dpad-height: 5%;        /* Adjust button height */
+      --dpad-left-position: 58%;  /* Position for left button (<) */
+      --dpad-right-position: 62%; /* Position for right button (>) */
     }
 
     html, body { height: 100%; margin: 0; overflow: hidden; position: relative; background-color: #111; background-image: url('pokemonBackground.gif'); background-size: cover; background-position: center; background-repeat: no-repeat; }
@@ -59,10 +59,10 @@
       max-width: 90%;
       width: 600px;
     }
-    #pokedex-open-img { width: 100%; pointer-events: none; }
+    #pokedex-open-img { width: 100%; pointer-events: none; z-index: 25; }
     #thumbnail-container {
       position: absolute; top: var(--thumbnail-top); left: var(--thumbnail-left); width: var(--thumbnail-width); height: var(--thumbnail-height);
-      overflow: hidden; pointer-events: none; border-radius: 4px; z-index: 25;
+      overflow: hidden; pointer-events: none; border-radius: 4px; z-index: 20;
     }
     #thumbnail {
       width: 100%; height: 100%; object-fit: var(--thumbnail-object-fit); object-position: var(--thumbnail-object-position);
@@ -389,10 +389,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
